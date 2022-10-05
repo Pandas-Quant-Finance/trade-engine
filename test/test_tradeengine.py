@@ -75,11 +75,20 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         print("\n", hist)
 
     def test_target_weights_1_over_n(self):
+        from common.pandas_extensions import cumpct_change
         te = YFinanceBacktestingTradeEngine(start_capital=1000)
         pd.date_range('2020-01-01', '2020-12-31').to_series().apply(
             lambda x: te.target_weights(["AAPL", "MSFT"], [0.5, 0.5], timestamp=x.to_pydatetime())
         )
 
         hist = te.get_history()
-        print("\n", hist)
-        hist.to_csv("1n.csv")
+
+        self.assertLessEqual(
+            hist[("MSFT", "Close")].cumpct_change().iloc[-1],
+            hist[("TOTAL", "pnl_percent")].iloc[-1]
+        )
+
+        self.assertGreaterEqual(
+            hist[("AAPL", "Close")].cumpct_change().iloc[-1],
+            hist[("TOTAL", "pnl_percent")].iloc[-1]
+        )

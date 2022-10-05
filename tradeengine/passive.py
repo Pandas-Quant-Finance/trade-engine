@@ -142,7 +142,7 @@ class BacktestingTradeEngine(TradeEngine):
 
         if cash is not None:
             df[("cash_balance", "TOTAL")] = cash + df[("cash_utilized", "TOTAL")].fillna(0)
-            df[("pnl_percent", "TOTAL")] = df[("pnl", "TOTAL")] / (cash / 100)
+            df[("pnl_percent", "TOTAL")] = df[("pnl", "TOTAL")] / (cash / 100) / 100
             df = pd.concat([
                 pd.DataFrame({("cash_balance", "TOTAL"): [cash]}, index=[df.index[0] - pd.Timedelta(days=1)]),
                 df
