@@ -82,13 +82,15 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         )
 
         hist = te.get_history()
+        min_ret = min(hist[("MSFT", "Close")].cumpct_change().iloc[-1],hist[("AAPL", "Close")].cumpct_change().iloc[-1])
+        max_ret = max(hist[("MSFT", "Close")].cumpct_change().iloc[-1],hist[("AAPL", "Close")].cumpct_change().iloc[-1])
 
         self.assertLessEqual(
-            hist[("MSFT", "Close")].cumpct_change().iloc[-1],
-            hist[("TOTAL", "pnl_percent")].iloc[-1]
+            hist[("TOTAL", "pnl_percent")].iloc[-1],
+            max_ret
         )
 
         self.assertGreaterEqual(
-            hist[("AAPL", "Close")].cumpct_change().iloc[-1],
-            hist[("TOTAL", "pnl_percent")].iloc[-1]
+            hist[("TOTAL", "pnl_percent")].iloc[-1],
+            min_ret
         )
