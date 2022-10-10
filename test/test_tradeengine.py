@@ -42,6 +42,18 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         # also test limit and position id (to long short same asset)
         pass
 
+    def test_pnl(self):
+        te = YFinanceBacktestingTradeEngine()
+        te.trade("AAPL", 10, timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")
+        te.close('AAPL', timestamp=datetime.fromisoformat('2020-01-06'), position_id="APPL-Long")
+        te.trade("AAPL", 10, timestamp=datetime.fromisoformat('2020-09-01'), position_id="APPL-Long")
+        te.close('AAPL', timestamp=datetime.fromisoformat('2020-09-06'), position_id="APPL-Long")
+
+        hist_no_cash = te.get_history()
+        hist_cash = te.get_history(cash=5000)
+
+        print("")
+
     def test_close(self):
         te = YFinanceBacktestingTradeEngine()
         te.trade("AAPL", 10, timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")  # long

@@ -97,13 +97,14 @@ class BacktestingTradeEngine(TradeEngine):
         self.positions.loc[(pos_id, price_date), :] = [asset, quantity, price]
         self.positions.sort_index(inplace=True)
 
-    def get_history(self, cash: float = None):
+    def get_history(self, cash: float = None, silent: bool = False):
         cash = coalesce(cash, self.start_capital)
 
         # calculate pnl
         df = self.positions
         if len(df) <= 0: return None
 
+        # position value and pnl at the time of trace
         df["trade_pos_val"] = df["quantity"] * df["price"]
         df = df.join(
             df.groupby(level=0)["quantity"].cumsum().rename("pos")
@@ -128,11 +129,16 @@ class BacktestingTradeEngine(TradeEngine):
 
         df = df.swaplevel(0, 1, axis=1)
         df["pos"] = df["pos"].ffill()
+
+        # position value and pnl during holding time
         df = df.join(
-            pd.concat([df["pos"] * df["Close"]], keys=["pos_pnl"], axis=1) + df["cash_val"].ffill().values
+            pd.concat([df["pos"] * df["Close"]], keys=["pos_val"], axis=1)
+        )
+        df = df.join(
+            pd.concat([df["pos_val"]], keys=["pos_pnl"], axis=1) + df["cash_val"].ffill().values
         )
 
-        # total of portfolio
+        # total utilized cash and pnl of whole portfolio
         df = df.join(
             pd.concat([
                 df["cash_val"].ffill().sum(axis=1).rename("TOTAL").to_frame(),
@@ -140,19 +146,40 @@ class BacktestingTradeEngine(TradeEngine):
             ], keys=["cash_utilized", "pnl"], axis=1)
         )
 
-        if cash is not None:
+        if cash is None:
+            df[("cash_balance", "TOTAL")] = None
+            df[("net_asset_value", "TOTAL")] = df["pos_val"].sum(axis=1)
+
+            # Simulate an artificial purchasing power just enough to afford each position entry
+            has_position = (df["pos_val"] / df["pos_val"]).replace(0, np.nan)  # 1 for open position or NaN for no pos
+            virtual_cash = (df["cash_val"] * has_position).ffill().abs().sum(axis=1)
+            df[("pnl_percent", "TOTAL")] = df["pos_pnl"].sum(axis=1) / virtual_cash
+        else:
             df[("cash_balance", "TOTAL")] = cash + df[("cash_utilized", "TOTAL")].fillna(0)
-            df[("pnl_percent", "TOTAL")] = df[("pnl", "TOTAL")] / (cash / 100) / 100
+            df[("net_asset_value", "TOTAL")] = df[("cash_balance", "TOTAL")] - df[("cash_utilized", "TOTAL")].fillna(0) + df[("pnl", "TOTAL")]
+            df[("pnl_percent", "TOTAL")] = df[("pnl", "TOTAL")] / cash
+
+            # prepend a starting balance row with only the cash provided
             df = pd.concat([
-                pd.DataFrame({("cash_balance", "TOTAL"): [cash]}, index=[df.index[0] - pd.Timedelta(days=1)]),
+                pd.DataFrame(
+                    {("cash_balance", "TOTAL"): [cash], ("net_asset_value", "TOTAL"): [cash]},
+                    index=[df.index[0] - pd.Timedelta(days=1)]),
                 df
             ], axis=0)
 
-            if (df[("cash_balance", "TOTAL")] < 0).sum() > 0:
-                err = SystemError("Cash went negative!")
-                err.df = df.swaplevel(0, 1, axis=1).sort_index(axis=0).sort_index(axis=1)
-                raise err
+            # perform some sanity checks
+            if not silent:
+                # sanity check that we can't go negative
+                if (df[("cash_balance", "TOTAL")] < 0).sum() > 0:
+                    err = SystemError("Cash went negative!")
+                    err.df = df.swaplevel(0, 1, axis=1).sort_index(axis=0).sort_index(axis=1)
+                    raise err
 
+        # finally add some total return timeseries
+        pnlpercent = df[("pnl_percent", "TOTAL")] + 1
+        df[("return", "TOTAL")] = (pnlpercent / pnlpercent.shift(1) - 1).fillna(0, limit=1)
+
+        # now swap back the levels and return the detailed dataframe
         return df.swaplevel(0, 1, axis=1).sort_index(axis=0).sort_index(axis=1)
 
 
