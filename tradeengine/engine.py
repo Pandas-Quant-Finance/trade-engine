@@ -70,7 +70,10 @@ class TradeEngine(object):
         :param kwargs:
         """
 
-        assert abs(sum(weights) - 1.0) <= 1e-6, "Weighs need to sum up to 1.0è"
+        assert sum(weights) <= 1, "Sum of weighs need to be <= 1.0"
+        assert sum(weights) > 0, "Sum of weighs need to be > 0"
+        assert max(weights) <= 1, "Max of weighs need to be <= 1.0"
+        assert min(weights) >= -1, "Min of weighs need to be >= -1"
         assert self.start_capital is not None, "need start capital property to be present!"
 
         # get current positions and set weight to zero if a position is not in the target vector anymore

@@ -74,7 +74,7 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
 
         with self.assertRaises(AssertionError):
             te = YFinanceBacktestingTradeEngine(start_capital=1000)
-            te.target_weights(["AAPL", "MSFT"], [0.25, 0.74], timestamp=datetime.fromisoformat('2020-01-01'))
+            te.target_weights(["AAPL", "MSFT"], [0.25, 0.76], timestamp=datetime.fromisoformat('2020-01-01'))
 
         te = YFinanceBacktestingTradeEngine(start_capital=1000)
         te.target_weights(["AAPL", "MSFT"], [0.25, 0.75], timestamp=datetime.fromisoformat('2020-01-01'))
@@ -106,3 +106,10 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
             hist[("TOTAL", "pnl_percent")].iloc[-1],
             min_ret
         )
+
+    def test_odd_target_weights(self):
+        assert False, "Not implemented"
+
+    def test_target_weights_with_shorts(self):
+        assert False, "Not implemented"
+
