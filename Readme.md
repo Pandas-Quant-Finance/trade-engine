@@ -6,10 +6,13 @@ returns like so.
 ```python
 import quantstats as qs
 from tradeengine import YFinanceBacktestingTradeEngine
+from datetime import datetime
 
 trade_engine = YFinanceBacktestingTradeEngine()
 
 # .. execute some trades
+trade_engine.trade("AAPL", 10, timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")
+trade_engine.close('AAPL', timestamp=datetime.fromisoformat('2020-01-06'), position_id="APPL-Long")
 
 qs.stats.sharpe(trade_engine.get_history()[("TOTAL", "return")])
 ```
