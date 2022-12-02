@@ -13,7 +13,7 @@ class TradeEngine(object):
     def __init__(self, start_capital: float = None):
         super().__init__()
         self.start_capital = start_capital
-        self.target_weights_residual_cash_balance = 0
+        self._target_weights_residual_cash_balance = 0
         self.current_cash = coalesce(start_capital, 0.0)
 
     @abstractmethod
@@ -119,7 +119,7 @@ class TradeEngine(object):
                     raise re
 
         # calculate difference and add to capital
-        self.target_weights_residual_cash_balance -= new_capital_employed
+        self._target_weights_residual_cash_balance -= new_capital_employed
 
     def get_current_balance(self, *, timestamp: Optional[datetime.datetime] = None) -> Tuple[float, List[Tuple[Any, Any]]]:
         # for current capital get all current positions and asset prices, if not present use start capital
@@ -127,9 +127,9 @@ class TradeEngine(object):
 
         if is_empty_iterable(portfolio):
             capital = self.start_capital
-            self.target_weights_residual_cash_balance = self.start_capital
+            self._target_weights_residual_cash_balance = self.start_capital
         else:
-            capital = self.target_weights_residual_cash_balance
+            capital = self._target_weights_residual_cash_balance
             for pid, ass in portfolio:
                 cpos = self.get_current_position(pid, timestamp=timestamp)
                 cprice = self.get_current_price(ass, timestamp=timestamp)

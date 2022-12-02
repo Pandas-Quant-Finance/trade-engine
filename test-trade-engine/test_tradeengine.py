@@ -45,6 +45,7 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
     def test_trade_max(self):
         te = YFinanceBacktestingTradeEngine(start_capital=100)
         _, q, _ = te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")
+
         self.assertEqual(
             te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-09-01'), position_id="APPL-Long"),
             ('APPL-Long', 0, 0)
@@ -60,6 +61,25 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
             ('APPL-Long', 0, 0)
         )
 
+    def test_trade_max_with_slippage(self):
+        te = YFinanceBacktestingTradeEngine(start_capital=100)
+        _, q, _ = te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-01-01'), slippage=0.01, position_id="APPL-Long")
+
+        self.assertAlmostEqual(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-10-06'), slippage=0.01,
+                     position_id="APPL-Long")[1],
+            0
+        )
+        te.trade("AAPL", -q / 2, timestamp=datetime.fromisoformat('2020-10-02'), slippage=0.01, position_id="APPL-Long"),
+
+        self.assertGreater(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-10-05'), slippage=0.01, position_id="APPL-Long")[1],
+            0.5
+        )
+        self.assertAlmostEqual(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-10-06'), slippage=0.01, position_id="APPL-Long")[1],
+            0
+        )
 
     def test_pnl(self):
         te = YFinanceBacktestingTradeEngine()

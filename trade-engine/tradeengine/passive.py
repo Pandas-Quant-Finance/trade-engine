@@ -66,17 +66,21 @@ class BacktestingTradeEngine(TradeEngine):
         if price is None:
             return position_id, None, None
 
+        # as markets have a spread and fees and move we have to introduce some slippage
         price *= (1 + slippage) if quantity == 'max' or quantity > 0 else (1 - slippage)
 
+        # let us transform an implicit max to the maximum quantity we can get
         if quantity == 'max':
             quantity = max(self.current_cash / price, 0)
 
+        # if the quantity is 0 we obviously don't trade
         if quantity == 0:
             return position_id, 0, 0
 
         # increase decrease the position (coalesce(position_id, asset))
         self.update_position(coalesce(position_id, asset), asset, quantity, price, price_date)
 
+        # return trade details
         return position_id, quantity, price
 
     def get_next_price(self, asset, timestamp, limit) -> Tuple[datetime.datetime, float]:
