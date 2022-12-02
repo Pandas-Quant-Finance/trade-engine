@@ -3,7 +3,9 @@ from abc import abstractmethod
 from functools import partial
 from typing import Any, Optional, List, Tuple
 
-from common.nullsafe import is_empty_iterable, coalesce
+from tradeengine.common.nullsafe import is_empty_iterable, coalesce
+from tradeengine.common.pandas_extensions import cumpct_change
+print(cumpct_change)
 
 
 class TradeEngine(object):
@@ -12,6 +14,7 @@ class TradeEngine(object):
         super().__init__()
         self.start_capital = start_capital
         self.target_weights_residual_cash_balance = 0
+        self.current_cash = coalesce(start_capital, 0.0)
 
     @abstractmethod
     def trade(
@@ -57,7 +60,7 @@ class TradeEngine(object):
         :param timestamp:
         :param kwargs: same keyword arguments as for `trade`
         """
-        qty = self.get_current_position(kwargs.get("position_id", asset))
+        qty = coalesce(self.get_current_position(kwargs.get("position_id", asset)), 0.0)
         if abs(qty) > 1e-6:
             self.trade(asset, qty * -1, timestamp=timestamp, **kwargs)
 
@@ -71,7 +74,7 @@ class TradeEngine(object):
         """
 
         assert sum(weights) <= 1, "Sum of weighs need to be <= 1.0"
-        assert sum(weights) > 0, "Sum of weighs need to be > 0"
+        assert sum(weights) >= -1, "Sum of weighs need to be >= -1"
         assert max(weights) <= 1, "Max of weighs need to be <= 1.0"
         assert min(weights) >= -1, "Min of weighs need to be >= -1"
         assert self.start_capital is not None, "need start capital property to be present!"
@@ -86,7 +89,7 @@ class TradeEngine(object):
         for pid, ass in zip(position_ids, assets):
             quantity = coalesce(self.get_current_position(pid, timestamp=timestamp), 0.0)
             price = self.get_current_price(ass, timestamp=timestamp)
-            target_pos = (capital * weights[pid]) / price
+            target_pos = (capital * weights[pid]) / price  #(price * ((1 - slippage if quantity > 0 else 1 + slippage)))
             delta_quantity = (target_pos - quantity) * (1 - slippage)
 
             ranked_trades.append((
@@ -109,7 +112,8 @@ class TradeEngine(object):
         for _, trade in sorted(ranked_trades, key=lambda pair: pair[0]):
             try:
                 _, quantity, price = trade()
-                new_capital_employed += quantity * price
+                if quantity is not None:
+                    new_capital_employed += quantity * price
             except RecursionError as re:
                 if not silent_double_order:
                     raise re

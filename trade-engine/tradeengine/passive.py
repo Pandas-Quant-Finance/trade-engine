@@ -1,12 +1,12 @@
 import datetime
-from abc import abstractmethod
 from typing import Any, Tuple, List, Optional, Callable, Dict, Union
 
 import numpy as np
 import pandas as pd
 
-from common.defaults import keydefaultdict
-from common.nullsafe import coalesce
+from tradeengine.common.defaults import keydefaultdict
+from tradeengine.common.nullsafe import coalesce
+from tradeengine.common.tz_compare import timestamp_greater
 from tradeengine.engine import TradeEngine
 
 
@@ -63,8 +63,16 @@ class BacktestingTradeEngine(TradeEngine):
 
         # first find the price of the next possible timestamps, exit if not available
         price_date, price = self.get_next_price(asset, timestamp, limit)
-        if price is None: return
-        price *= (1 + slippage) if quantity > 0 else (1 - slippage)
+        if price is None:
+            return position_id, None, None
+
+        price *= (1 + slippage) if quantity == 'max' or quantity > 0 else (1 - slippage)
+
+        if quantity == 'max':
+            quantity = max(self.current_cash / price, 0)
+
+        if quantity == 0:
+            return position_id, 0, 0
 
         # increase decrease the position (coalesce(position_id, asset))
         self.update_position(coalesce(position_id, asset), asset, quantity, price, price_date)
@@ -96,6 +104,7 @@ class BacktestingTradeEngine(TradeEngine):
 
         self.positions.loc[(pos_id, price_date), :] = [asset, quantity, price]
         self.positions.sort_index(inplace=True)
+        self.current_cash -= quantity * price
 
     def get_history(self, cash: float = None, silent: bool = False):
         cash = coalesce(cash, self.start_capital)
@@ -170,8 +179,9 @@ class BacktestingTradeEngine(TradeEngine):
             # perform some sanity checks
             if not silent:
                 # sanity check that we can't go negative
-                if (df[("cash_balance", "TOTAL")] < 0).sum() > 0:
-                    err = SystemError("Cash went negative!")
+                if (df[("cash_balance", "TOTAL")] < -1e-4).sum() > 0:
+                    overdraft = df[("cash_balance", "TOTAL")][(df[("cash_balance", "TOTAL")] < -1e-4)].min()
+                    err = SystemError(f'Cash went negative! {overdraft}')
                     err.df = df.swaplevel(0, 1, axis=1).sort_index(axis=0).sort_index(axis=1)
                     raise err
 
@@ -209,7 +219,7 @@ class DataFrameBacktestingTradeEngine(BacktestingTradeEngine):
 
     def _next_price(self, asset: Any, timestamp: datetime.datetime) -> Tuple[datetime.datetime, float, float, float, float]:
         df = self.timeseries[asset]
-        df = df[df.index > timestamp]
+        df = df[timestamp_greater(df.index, timestamp)]
         if len(df) > 0:
             return (df.index[0].to_pydatetime(), *df[["Open", "High", "Low", "Volume"]].iloc[0].tolist())
         else:

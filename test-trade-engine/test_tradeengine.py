@@ -42,6 +42,25 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         # also test limit and position id (to long short same asset)
         pass
 
+    def test_trade_max(self):
+        te = YFinanceBacktestingTradeEngine(start_capital=100)
+        _, q, _ = te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")
+        self.assertEqual(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-09-01'), position_id="APPL-Long"),
+            ('APPL-Long', 0, 0)
+        )
+        te.trade("AAPL", -q / 2, timestamp=datetime.fromisoformat('2020-10-02'), position_id="APPL-Long"),
+
+        self.assertGreater(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-10-05'), position_id="APPL-Long")[1],
+            0.5
+        )
+        self.assertEqual(
+            te.trade("AAPL", 'max', timestamp=datetime.fromisoformat('2020-10-06'), position_id="APPL-Long"),
+            ('APPL-Long', 0, 0)
+        )
+
+
     def test_pnl(self):
         te = YFinanceBacktestingTradeEngine()
         te.trade("AAPL", 10, timestamp=datetime.fromisoformat('2020-01-01'), position_id="APPL-Long")
@@ -87,7 +106,6 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         print("\n", hist)
 
     def test_target_weights_1_over_n(self):
-        from common.pandas_extensions import cumpct_change
         te = YFinanceBacktestingTradeEngine(start_capital=1000)
         pd.date_range('2020-01-01', '2020-12-31').to_series().apply(
             lambda x: te.target_weights(["AAPL", "MSFT"], [0.5, 0.5], timestamp=x.to_pydatetime())
