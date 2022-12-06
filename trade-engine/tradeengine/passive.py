@@ -74,7 +74,7 @@ class BacktestingTradeEngine(TradeEngine):
             quantity = max(self.current_cash / price, 0)
 
         # if the quantity is 0 we obviously don't trade
-        if quantity == 0:
+        if quantity <= 1e-6:
             return position_id, 0, 0
 
         # increase decrease the position (coalesce(position_id, asset))
