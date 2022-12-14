@@ -72,10 +72,9 @@ class BacktestingTradeEngine(TradeEngine):
         # let us transform an implicit max to the maximum quantity we can get
         if quantity == 'max':
             quantity = max(self.current_cash / price, 0)
-
-        # if the quantity is 0 we obviously don't trade
-        if quantity <= 1e-6:
-            return position_id, 0, 0
+            # if the quantity is 0 we obviously don't trade
+            if quantity <= 1e-6 :
+                return position_id, 0, 0
 
         # increase decrease the position (coalesce(position_id, asset))
         self.update_position(coalesce(position_id, asset), asset, quantity, price, price_date)

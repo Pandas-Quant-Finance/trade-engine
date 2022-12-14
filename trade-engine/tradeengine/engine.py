@@ -1,7 +1,7 @@
 import datetime
 from abc import abstractmethod
 from functools import partial
-from typing import Any, Optional, List, Tuple
+from typing import Any, Optional, List, Tuple, Dict
 
 from tradeengine.common.nullsafe import is_empty_iterable, coalesce
 from tradeengine.common.pandas_extensions import cumpct_change
@@ -97,7 +97,7 @@ class TradeEngine(object):
                 partial(self.trade, ass, delta_quantity, timestamp=timestamp, position_id=pid, **kwargs)
             ))
 
-        for ppid, ass in portfolio:
+        for ppid, ass, _ in portfolio:
             # if position exists in portfolio but is not in the target vector
             if ppid not in position_ids:
                 current_pos = self.get_current_position(ppid, timestamp=timestamp)
@@ -121,18 +121,25 @@ class TradeEngine(object):
         # calculate difference and add to capital
         self._target_weights_residual_cash_balance -= new_capital_employed
 
-    def get_current_balance(self, *, timestamp: Optional[datetime.datetime] = None) -> Tuple[float, List[Tuple[Any, Any]]]:
+    def get_current_balance(self, *, timestamp: Optional[datetime.datetime] = None) -> Tuple[float, List[Tuple[Any, Any, float]]]:
         # for current capital get all current positions and asset prices, if not present use start capital
-        portfolio = self.get_all_position_ids()
+        positions_assets = self.get_all_position_ids()
+        portfolio = []
 
-        if is_empty_iterable(portfolio):
+        if is_empty_iterable(positions_assets):
             capital = self.start_capital
             self._target_weights_residual_cash_balance = self.start_capital
         else:
             capital = self._target_weights_residual_cash_balance
-            for pid, ass in portfolio:
+            for pid, ass in positions_assets:
                 cpos = self.get_current_position(pid, timestamp=timestamp)
                 cprice = self.get_current_price(ass, timestamp=timestamp)
                 capital += cpos * cprice
+                portfolio.append((pid, ass, cpos * cprice))
 
         return capital, portfolio
+
+    def get_current_weights(self, timestamp) -> Dict[Tuple[Any, Any], float]:
+        capital, portfolio = self.get_current_balance(timestamp=timestamp)
+
+        return {(pid, ass): size / capital for pid, ass, size in portfolio}

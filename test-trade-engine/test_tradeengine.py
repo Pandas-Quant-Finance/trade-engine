@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+import numpy as np
 import pandas as pd
 
 from tradeengine import YFinanceBacktestingTradeEngine
@@ -145,9 +146,38 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
             min_ret
         )
 
+    def test_get_weights(self):
+        te = YFinanceBacktestingTradeEngine(start_capital=1000)
+        te.target_weights(["AAPL", "MSFT"], [0.25, 0.75], timestamp=datetime.fromisoformat('2020-01-01'))
+        cw = te.get_current_weights(timestamp=datetime.fromisoformat('2020-01-02'))
+        # print(cw)
+
+        np.testing.assert_almost_equal(
+            np.array([0.247, 0.739]),
+            np.array(list(cw.values())),
+            decimal=3
+        )
+
     def test_odd_target_weights(self):
-        assert False, "Not implemented"
+        te = YFinanceBacktestingTradeEngine(start_capital=1000)
+        te.target_weights(["AAPL", "MSFT"], [0.2, 0.5], timestamp=datetime.fromisoformat('2020-01-01'))
+        cw = te.get_current_weights(timestamp=datetime.fromisoformat('2020-01-02'))
+        # print(cw)
+
+        np.testing.assert_almost_equal(
+            np.array([0.198, 0.4948]),
+            np.array(list(cw.values())),
+            decimal=3
+        )
 
     def test_target_weights_with_shorts(self):
-        assert False, "Not implemented"
+        te = YFinanceBacktestingTradeEngine(start_capital=1000)
+        te.target_weights(["AAPL", "MSFT", "AMZN"], [0.2, 0.8, -1.0], timestamp=datetime.fromisoformat('2020-01-01'))
+        cw = te.get_current_weights(timestamp=datetime.fromisoformat('2020-01-02'))
+        # print(cw)
 
+        np.testing.assert_almost_equal(
+            np.array([0.200, -1.006, 0.798]),
+            np.array(list(cw.values())),
+            decimal=3
+        )
