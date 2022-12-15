@@ -5,7 +5,6 @@ from typing import Any, Optional, List, Tuple, Dict
 
 from tradeengine.common.nullsafe import is_empty_iterable, coalesce
 from tradeengine.common.pandas_extensions import cumpct_change
-print(cumpct_change)
 
 
 class TradeEngine(object):
@@ -72,11 +71,11 @@ class TradeEngine(object):
         :param timestamp:
         :param kwargs:
         """
-
-        assert sum(weights) <= 1, "Sum of weighs need to be <= 1.0"
-        assert sum(weights) >= -1, "Sum of weighs need to be >= -1"
-        assert max(weights) <= 1, "Max of weighs need to be <= 1.0"
-        assert min(weights) >= -1, "Min of weighs need to be >= -1"
+        epsilon = 1e-5
+        assert sum(weights) <= 1 + epsilon, f"Sum of weighs need to be <= 1.0 @ {timestamp}"
+        assert sum(weights) >= -1 - epsilon, f"Sum of weighs need to be >= -1 @ {timestamp}"
+        assert max(weights) <= 1 + epsilon, f"Max of weighs need to be <= 1.0 @ {timestamp}"
+        assert min(weights) >= -1 - epsilon, f"Min of weighs need to be >= -1 @ {timestamp}"
         assert self.start_capital is not None, "need start capital property to be present!"
 
         # get current positions and set weight to zero if a position is not in the target vector anymore
