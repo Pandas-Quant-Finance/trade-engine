@@ -6,6 +6,9 @@ import pandas as pd
 from tradeengine import YFinanceBacktestingTradeEngine
 from datetime import datetime
 
+from tradeengine.components import YfBacktester
+from tradeengine.events import *
+
 
 class TestYFinanceBacktestingTradeEngine(TestCase):
 
@@ -147,9 +150,9 @@ class TestYFinanceBacktestingTradeEngine(TestCase):
         )
 
     def test_get_weights(self):
-        te = YFinanceBacktestingTradeEngine(start_capital=1000)
-        te.target_weights(["AAPL", "MSFT"], [0.25, 0.75], timestamp=datetime.fromisoformat('2020-01-01'))
-        cw = te.get_current_weights(timestamp=datetime.fromisoformat('2020-01-02'))
+        te = YfBacktester('2020-01-01', 1000)
+        te.target_weights(TargetWeights(([Asset("AAPL"), Asset("MSFT")], [0.25, 0.75]), valid_from=datetime.fromisoformat('2020-01-04')))
+        cw = te.get_current_weights(datetime.fromisoformat('2020-01-06'))
         # print(cw)
 
         np.testing.assert_almost_equal(

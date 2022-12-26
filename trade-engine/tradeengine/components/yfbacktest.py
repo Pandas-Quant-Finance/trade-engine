@@ -1,45 +1,78 @@
 from __future__ import annotations
+
 import logging
-from collections import defaultdict
-from datetime import datetime
-from typing import Dict, List
+from datetime import datetime, timedelta
+from typing import Dict, List, Callable
 
 import pandas as pd
 import yfinance
-from circuits import Component, handler
+
+from . import Account
 from ..events import *
 
 _log = logging.getLogger(__name__)
 
 
-class YfBacktester(Component):
+class PandasBarBacktester(Account):
 
-    def __init__(self, starting_date: datetime | str):
-        super().__init__()
+    def __init__(
+            self,
+            dataframe_provider: Callable[[Asset, datetime], pd.DataFrame],
+            starting_date: datetime | str,
+            starting_balance: float = 100
+    ):
+        super().__init__(starting_balance)
+        self.dataframe_provider = dataframe_provider
         self.starting_date = datetime.fromisoformat(starting_date) if isinstance(starting_date, str) else starting_date
         self.quotes: Dict[str, pd.DataFrame] = {}
 
-    @handler(ReadyForComplexTradeEvent.__name__)
-    def new_trading_day(self, assets: List[Asset], time: datetime):
-        #_send_quotes(self, assets, time)
+    def subscribe_market_data(self, asset: Asset, valid_from: datetime):
         pass
 
-    @handler(SubscribeToQuoteProviderEvent.__name__)
-    def subscribe_asset_quote_feed(self, ass: Asset, time: datetime):
-        _log.debug(f"send quotes for {ass} until {time}")
+    def prepare_for_summary(self):
+        # just send all the remaining price data
+        self.prepare_to_trade([Asset(a) for a in self.quotes.keys()], datetime.now() + timedelta(days=1))
 
-        if ass.id not in self.quotes:
-            self.quotes[ass.id] = yfinance.Ticker(ass.id).history(start=self.starting_date)
+    def prepare_to_trade(self, assets: List[Asset], time: datetime):
+        if self.quote_date is not None:
+            if time.tzinfo is None:
+                time = pd.Timestamp(time, tz=self.quote_date.tzinfo)
 
-        data = self.quotes[ass.id]
+            assert time >= self.quote_date, \
+            f"cant trade in the past! {time} vs {self.quote_date}"
 
-        if time.tzinfo is None:
-            time = pd.Timestamp(time)
+        for ass in assets:
+            _log.debug(f"send quotes for {ass} until {time}")
 
-        tosend = data[data.index <= time]
-        remainder = data[data.index > time]
+            # fetch data
+            if ass.id not in self.quotes:
+                self.quotes[ass.id] = self.dataframe_provider(ass, self.starting_date)
+            data = self.quotes[ass.id]
+            if len(data) <= 0: continue
 
-        for idx, row in tosend[["Open", "High", "Low", "Close", "Volume"]].iterrows():
-            _ = yield self.fire(QuoteUpdatedEvent(Quote(ass, idx, Bar(*row.values))))
+            # fix timezones
+            if time.tzinfo is None:
+                time = pd.Timestamp(time, tz=data.index[0].tz)
 
-        self.quotes[ass.id] = remainder
+            # check already sent everything we have
+            if data.index[0] > time:
+                continue
+
+            # split dataset for data to send and data to keep for later
+            tosend = data[data.index <= time]
+            remainder = data[data.index > time]
+
+            # send quote update, keep remaining data
+            for idx, row in tosend[["Open", "High", "Low", "Close", "Volume"]].iterrows():
+                self.quote_update(Quote(ass, idx, Bar(*row.values)))
+            self.quotes[ass.id] = remainder
+
+
+class YfBacktester(PandasBarBacktester):
+
+    def __init__(self, starting_date: datetime | str, starting_balance: float = 100):
+        super().__init__(
+            lambda asset, time: yfinance.Ticker(asset.id).history(start=time),
+            starting_date,
+            starting_balance
+        )

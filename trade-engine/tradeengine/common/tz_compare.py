@@ -6,23 +6,35 @@ import pandas as pd
 _LOG = logging.getLogger(__name__)
 
 
-def timestamp_greater(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
-    return index > _eveutually_localize(index, timestamp)
+def timestamp_greater(
+        index: pd.DatetimeIndex | str | date | datetime | pd.Timestamp,
+        timestamp: str | date | datetime | pd.Timestamp
+):
+    return index > _eventually_localize(index, timestamp)
 
 
-def timestamp_greater_equal(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
-    return index >= _eveutually_localize(index, timestamp)
+def timestamp_greater_equal(
+        index: pd.DatetimeIndex | str | date | datetime | pd.Timestamp,
+        timestamp: str | date | datetime | pd.Timestamp
+):
+    return index >= _eventually_localize(index, timestamp)
 
 
-def timestamp_less(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
-    return index < _eveutually_localize(index, timestamp)
+def timestamp_less(
+        index: pd.DatetimeIndex | str | date | datetime | pd.Timestamp,
+        timestamp: str | date | datetime | pd.Timestamp
+):
+    return index < _eventually_localize(index, timestamp)
 
 
-def timestamp_less_equal(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
-    return index <= _eveutually_localize(index, timestamp)
+def timestamp_less_equal(
+        index: pd.DatetimeIndex | str | date | datetime | pd.Timestamp,
+        timestamp: str | date | datetime | pd.Timestamp
+):
+    return index <= _eventually_localize(index, timestamp)
 
 
-def _eveutually_localize(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
+def _eventually_localize(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
     if index.tz is not None:
         if isinstance(timestamp, str):
             _LOG.warning(f"localize timestamp {timestamp } to {index.tz}")

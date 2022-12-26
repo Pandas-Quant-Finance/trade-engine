@@ -3,7 +3,9 @@ from unittest import TestCase
 import numpy as np
 import yfinance as yf
 
-from tradeengine import YFinanceBacktestingTradeEngine
+#from tradeengine import YFinanceBacktestingTradeEngine
+from tradeengine.components import YfBacktester
+from tradeengine.events import Order, Asset
 
 
 class TestExampleStrategy(TestCase):
@@ -22,17 +24,17 @@ class TestExampleStrategy(TestCase):
 
         # now simulate the same strategy with the trade engine where no shift is needed
         # since we inherently only allow to trade at the next bar _after_ the signal
-        te = YFinanceBacktestingTradeEngine()
+        te = YfBacktester(df.index[0])
         has_position = False
         for idx, day in df[["Close", "200-MA"]].iterrows():
             if day["Close"] > day["200-MA"] and not has_position:
-                te.trade("^GSPC", 1, timestamp=idx, position_id='SP500')
+                te.trade(Order(Asset("^GSPC"), 1, valid_from=idx, position_id='SP500'))
                 has_position = True
             elif day["Close"] < day["200-MA"] and has_position:
-                te.trade("^GSPC", -1, timestamp=idx, position_id='SP500')
+                te.trade(Order(Asset("^GSPC"), -1, valid_from=idx, position_id='SP500'))
                 has_position = False
 
-        print(te.get_history()["TOTAL", "pnl_percent"].iloc[-1])
+        print(te.get_history().iloc[-1])
 
         self.assertLess(df["200"].iloc[-1], df["bh"].iloc[-1])
         self.assertLess(te.get_history()["TOTAL", "pnl_percent"].iloc[-1], df["200"].iloc[-1],)
