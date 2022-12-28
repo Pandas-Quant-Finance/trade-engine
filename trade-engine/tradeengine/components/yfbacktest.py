@@ -25,15 +25,13 @@ class PandasBarBacktester(Account):
         self.dataframe_provider = dataframe_provider
         self.starting_date = datetime.fromisoformat(starting_date) if isinstance(starting_date, str) else starting_date
         self.quotes: Dict[str, pd.DataFrame] = {}
+        self.register(SubscribeToMarketData, handler=self.prepare_to_trade)
 
-    def subscribe_market_data(self, asset: Asset, valid_from: datetime):
+    def prepare_to_trade(self, pre_order: SubscribeToMarketData):
+        # implement me
         pass
 
-    def prepare_for_summary(self):
-        # just send all the remaining price data
-        self.prepare_to_trade([Asset(a) for a in self.quotes.keys()], datetime.now() + timedelta(days=1))
-
-    def prepare_to_trade(self, assets: List[Asset], time: datetime):
+    def prepare_to_trade_(self, assets: List[Asset], time: datetime):
         if self.quote_date is not None:
             if time.tzinfo is None:
                 time = pd.Timestamp(time, tz=self.quote_date.tzinfo)

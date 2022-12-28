@@ -35,7 +35,9 @@ def timestamp_less_equal(
 
 
 def _eventually_localize(index: pd.DatetimeIndex, timestamp: str | date | datetime | pd.Timestamp):
-    if index.tz is not None:
+    index_tz = index.tzinfo if isinstance(index, datetime) else index.tz
+
+    if index_tz is not None:
         if isinstance(timestamp, str):
             _LOG.warning(f"localize timestamp {timestamp } to {index.tz}")
             timestamp = pd.Timestamp.fromisoformat(timestamp).tz_localize(index.tz)

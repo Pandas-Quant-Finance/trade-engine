@@ -4,16 +4,108 @@ from abc import abstractmethod
 from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime
+from itertools import chain
+from threading import Lock
 from typing import Dict, List, Any, Tuple
 
 import pandas as pd
-
+from .orderbook import OrderBook
+from .portfolio import Portfolio
+from ..common.tz_compare import timestamp_greater_equal
 from ..events import *
+from .component import Component
+from ..events.data import TickMarketDataClock
 
 _log = logging.getLogger(__name__)
 
 
-class Account(object):
+class Account(Component):
+
+    def __init__(self, starting_balance: float = 100, slippage: float = 0, derive_quantity_slippage: float = 0.02):
+        super().__init__()
+        self._starting_balance = starting_balance
+        self.derive_quantity_slippage = derive_quantity_slippage
+
+        self.lock = Lock()
+        self.portfolio = Portfolio()
+        self.orderbook = OrderBook(slippage)
+
+        self.cash_balance = self._starting_balance
+        self.cash_timeseries: Dict[datetime, float] = {}
+        self.quotes: Dict[Asset, Quote] = {}
+
+        self.register(TradeExecution, handler=self.on_trade_execution)
+        self.register(TargetWeights, handler=self.place_target_weights_oder)
+        self.register(MaximumOrder, handler=self.place_maximum_order)
+
+    def on_quote_update(self, quote: Quote):
+        with self.lock:
+            if quote.asset in self.quotes:
+                if timestamp_greater_equal(quote.time, self.quotes[quote.asset].time):
+                    self.quotes[quote.asset] = quote
+            else:
+                self.quotes[quote.asset] = quote
+
+    def on_trade_execution(self, trade: TradeExecution):
+        with self.lock:
+            self.cash_balance += (-trade.quantity * trade.price)
+            self.cash_timeseries[trade.time] = self.cash_balance
+
+    def place_maximum_order(self, order: MaximumOrder):
+        # make sure we have the latest market data
+        self.fire(TickMarketDataClock(order.asset, order.valid_from))
+
+        # get maximum possible capital and place order
+        balance = self.cash_balance * (1 - self.derive_quantity_slippage)
+
+        # use derive_quantity_slippage to allow market movements from this tick to the next one
+        with self.lock:
+            price = self.quotes[order.asset].get_price(order.quantity, 'last')
+
+        self.fire(Order(order.asset, balance / price, order.limit, order.valid_from, order.valid_to, order.position_id))
+
+    def place_target_weights_oder(self, target_weights: TargetWeights, slippage: float = 0.02, min_weight=1e-3):
+        # make sure we have the latest market data
+        for asset in target_weights.asset_weights.keys():
+            self.fire(TickMarketDataClock(asset, target_weights.valid_from))
+
+        # TODO calculate the quantity from the weights
+        #  find the difference between the current position quantity and the target quantity
+        #  place orders of quantity if the quantity is not negligible small
+        #  use derive_quantity_slippage
+        #  use with self.lock: for self.quotes access
+        pass
+
+    def get_current_weights(self, time: datetime | str, pid: str = '') -> Dict[Asset, float]:
+        # we need all the latest quotes such that we can calculate the current weights
+        for asset in chain(self.portfolio.assets, self.orderbook.assets):
+            self.fire(TickMarketDataClock(asset, time))
+
+        with self.lock:
+            return self.portfolio.get_weights(self.cash_balance)
+
+    def get_history(self):
+        # FIXME ...
+        return pd.concat(
+            [pd.DataFrame(
+                [pd.Series(asdict(x), name=t) for t, x in ts.items()]
+            ) for ts in self.position_timeseries.values()],
+            axis=1,
+            keys=self.position_timeseries.keys()
+        ) if len(self.position_timeseries) > 0 else pd.DataFrame({})
+
+    @property
+    def total_balance(self, time = None):
+        if time is not None:
+            for asset in chain(self.orderbook.assets, self.portfolio.assets):
+                self.fire(TickMarketDataClock(asset, time))
+
+        with self.lock:
+            return self.cash_balance + self.portfolio.total_position_value
+
+
+
+class AccountOLD(object):
 
     def __init__(self, starting_balance: float = 100, slippage: float = 0.002):
         super().__init__()
@@ -193,53 +285,3 @@ class Account(object):
     @abstractmethod
     def prepare_for_summary(self):
         pass
-
-
-def check_limit(quantity: float, quote: Quote, limit: float):
-    pricing = quote.price
-    if isinstance(pricing, float):
-        if quantity > 0 and pricing <= limit:
-            return True
-        if quantity < 0 and pricing >= limit:
-            return True
-    elif isinstance(pricing, BidAsk):
-        if quantity > 0 and pricing.ask <= limit:
-            return True
-        if quantity < 0 and pricing.bid >= limit:
-            return True
-    elif isinstance(pricing, Bar):
-        if quantity > 0:
-            return limit < pricing.high
-        if quantity < 0:
-            return limit > pricing.low
-    else:
-        raise ValueError(f"Unknown quoting {type(pricing)}")
-
-    return False
-
-
-def get_price(quantity: float, quote: Quote, limit: float | str = None, slippage: float = 0):
-    pricing = quote.price
-    slippage_factor = (1 + slippage) if quantity > 0 else (1 - slippage)
-
-    if isinstance(pricing, float):
-        return pricing
-    elif isinstance(pricing, BidAsk):
-        if quantity > 0:
-            return pricing.ask * slippage_factor
-        elif quantity < 0:
-            return pricing.bid * slippage_factor
-        else:
-            return (pricing.bid + pricing.ask) / 2  * slippage_factor
-    elif isinstance(pricing, Bar):
-        if limit is None:
-            return pricing.open * slippage_factor
-        elif quantity == 0:
-            return pricing.close * slippage_factor
-        elif limit == 'last':
-            return pricing.close * slippage_factor
-        else:
-            return limit * slippage_factor
-    else:
-        raise ValueError(f"Unknown quoting {type(pricing)}")
-

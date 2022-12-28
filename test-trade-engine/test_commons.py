@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytz
 
+from tradeengine.common.dataframe_iterator import DataFrameIterator
 from tradeengine.common.nullsafe import coalesce
 from tradeengine.common.tz_compare import timestamp_greater
 
@@ -28,3 +29,16 @@ class TestCommonUtils(TestCase):
         ]:
             self.assertEqual(np.sum(timestamp_greater(tz_idx, ref_date)), 3)
             self.assertEqual(np.sum(timestamp_greater(idx, ref_date)), 3)
+
+    def test_df_iterator(self):
+        idx = pd.date_range('2000-01-01', '2001-01-01')
+        df = pd.DataFrame({"X": np.random.random(len(idx))},index=idx)
+
+        iter = DataFrameIterator(df)
+        self.assertIsInstance(list(iter.next_until('2000-01-01'))[0], pd.Series)
+        self.assertEqual(80, len([x for x in iter.next_until('2000-03-21')]))
+        self.assertEqual(0, len([x for x in iter.next_until('2000-03-21')]))
+        self.assertEqual(0, len([x for x in iter.next_until('2000-03-21')]))
+        self.assertEqual(11, len([x for x in iter.next_until('2000-04-01')]))
+        self.assertEqual(275, len([x for x in iter.next_until('2200-04-01')]))
+        self.assertEqual(0, len([x for x in iter.next_until('2100-04-01')]))
