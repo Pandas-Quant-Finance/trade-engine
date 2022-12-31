@@ -36,7 +36,7 @@ class Position(object):
             "asset": p.asset.id,
             "trade": self.change if include_trade_delta else None,
             "cost_basis": self.price,
-            "trade_price": (self.change * self.price - self.pnl) / self.change,
+            "trade_price": ((self.change * self.price - self.pnl) / self.change) if include_trade_delta else None,
             "position": self.quantity,
             "quote": price,
             "value": price * self.quantity,
