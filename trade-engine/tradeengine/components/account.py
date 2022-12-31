@@ -130,7 +130,7 @@ class Account(Component):
         )
 
         # return timeseries
-        return position_ts.swaplevel(0, 1, axis=1).sort_index(axis=1, level=0)
+        return position_ts.swaplevel(0, 1, axis=1).sort_index(axis=1, level=0, sort_remaining=False)
 
 
     @property

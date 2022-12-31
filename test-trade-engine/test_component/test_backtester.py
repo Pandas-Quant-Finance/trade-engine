@@ -24,7 +24,13 @@ class TestBackTester(TestCase):
 
         # the pnl should be very close to just the move of the stock
         buy_and_hold = ((df.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
-        print(df.iloc[0, 3], df.iloc[-1, 3])
-        #print(buy_and_hold)
+        #print(df.iloc[0, 3], df.iloc[-1, 3])
+
         dfhist = bt.get_history()
-        print(dfhist)
+        #print(dfhist)
+
+        self.assertAlmostEqual(-0.06714, dfhist["TOTAL", "pnl_%"].iloc[-1], 5)
+        self.assertLess(dfhist["TOTAL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
+
+    def test_swing(self):
+        pass
