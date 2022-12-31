@@ -35,12 +35,14 @@ class Position(object):
             "pid": p.id,
             "asset": p.asset.id,
             "trade": self.change if include_trade_delta else None,
-            "trade_price": self.price,
+            "cost_basis": self.price,
+            "trade_price": (self.change * self.price - self.pnl) / self.change,
             "position": self.quantity,
             "quote": price,
             "value": price * self.quantity,
             "unrealized_pnl": self.pnl - p.pnl,
             "realized_pnl": self.pnl,
+            "pnl": 2 * self.pnl - p.pnl,
         }
 
     def __add__(self, other: Tuple[float, float]):
@@ -146,6 +148,19 @@ class MaximumOrder(Order):
             position_id: str | None = None
     ):
         super().__init__(asset, float("NaN"), limit, valid_from, valid_to, position_id)
+
+
+@dataclass
+class CloseOrder(object):
+    def __init__(
+            self,
+            position: Asset | str | None,
+            limit: float | None = None,
+            valid_from: datetime | str = datetime.now(tz=tzlocal())
+    ):
+        self.position = position
+        self.limit = limit
+        self.valid_from: datetime = datetime.fromisoformat(valid_from) if isinstance(valid_from, str) else valid_from
 
 
 class BasketOrder(object):

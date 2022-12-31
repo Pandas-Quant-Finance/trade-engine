@@ -84,6 +84,7 @@ class TestPositionData(TestCase):
 
         # test realized and unrealized pnl
         ts = pd.DataFrame(p.evaluate(100) for p in seq)
+        print(ts)
         self.assertListEqual(
             [0, 0, 48, 40, 40, 43, 41, 41],
             ts["realized_pnl"].tolist()

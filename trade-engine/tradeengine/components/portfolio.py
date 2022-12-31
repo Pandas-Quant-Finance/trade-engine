@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime
 from threading import Lock
 from typing import Dict, List, Tuple
@@ -51,7 +52,7 @@ class Portfolio(Component):
         _log.debug(f"got new trade execution {trade}")
         with self.lock:
             if trade.position_id in self.positions[trade.asset]:
-                self.positions[trade.asset][trade.position_id] += trade.quantity
+                self.positions[trade.asset][trade.position_id] += (trade.quantity, trade.price)
             else:
                 self.positions[trade.asset][trade.position_id] = \
                     Position(trade.position_id, trade.asset, trade.quantity, trade.price)
@@ -66,31 +67,53 @@ class Portfolio(Component):
                 self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'))
 
     def get_weights(self, cash: float = 0):
-        balance = self.total_position_value + cash
-        weights = {}
+        with self.lock:
+            balance = self.total_position_value + cash
+            weights = {}
 
-        for a, positions in self.positions.items():
-            # pos = positions[pid + "/" + str(a.id)]
-            for pos in positions.values():
-                weights[a] = pos.quantity * self.latest_quote[a] / balance
+            for a, positions in self.positions.items():
+                # pos = positions[pid + "/" + str(a.id)]
+                for pos in positions.values():
+                    weights[a] = pos.quantity * self.latest_quote[a] / balance
 
-        return weights
+            return weights
 
     def get_timeseries(self):
-        # Dict[str, Dict[datetime, dict]]
-        df_ts = pd.concat(
-            [pd.DataFrame(ts.values(), index=ts.keys()) for ts in self.timeseries.values()],
-            axis=1,
-            keys=self.timeseries.keys(),
-            sort=True
-        )
+        # if we find ourselves to call this method very ofter we could think about cashing the data frame
+        # and just clear out the timeseries hashmaps (Dict[str, Dict[datetime, dict]]) and concatenate the results
 
-        return df_ts
+        with self.lock:
+            df_ts = pd.concat(
+                [pd.DataFrame(ts.values(), index=ts.keys()) for ts in self.timeseries.values()],
+                axis=1,
+                keys=self.timeseries.keys(),
+                sort=True
+            ).swaplevel(0, 1, axis=1)
+
+            df_ts = df_ts.join(
+                pd.concat(
+                    [
+                        df_ts["value"].sum(axis=1).rename(("value", "TOTAL")),
+                        df_ts["unrealized_pnl"].sum(axis=1).rename(("unrealized_pnl", "TOTAL")),
+                        df_ts["realized_pnl"].sum(axis=1).rename(("realized_pnl", "TOTAL")),
+                        df_ts["pnl"].sum(axis=1).rename(("pnl", "TOTAL")),
+                    ],
+                    axis=1
+                )
+            )
+
+            return df_ts.swaplevel(0, 1, axis=1)
 
     @property
     def total_position_value(self):
-        return sum(self.position_value.values())
+        with self.lock:
+            return sum(self.position_value.values())
 
     @property
     def assets(self) -> List[Asset]:
-        return list(self.positions.keys())
+        with self.lock:
+            return list(self.positions.keys())
+
+    def get_positions(self) -> Dict[Asset, Dict[str, Position]]:
+        with self.lock:
+            return deepcopy(self.positions)

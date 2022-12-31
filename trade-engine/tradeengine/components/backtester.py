@@ -36,4 +36,5 @@ class PandasBarBacktester(Account):
             self.quotes[event.asset] = DataFrameIterator(self.dataframe_provider(event.asset, event.time))
 
         for row in self.quotes[event.asset].next_until(event.time):
-            self.fire(Quote(event.asset, row.name.to_datetime(), self.bar_converter(row)))
+            # BLOCKING: make sure we wait that each quote tick is processed
+            self.fire(Quote(event.asset, row.name.to_pydatetime(), self.bar_converter(row)))

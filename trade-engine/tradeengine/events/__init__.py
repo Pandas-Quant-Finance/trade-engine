@@ -4,6 +4,7 @@ from .data import (
     Order,
     BasketOrder,
     MaximumOrder,
+    CloseOrder,
     SubscribeToMarketData,
     TickMarketDataClock,
     CancelOrder,
