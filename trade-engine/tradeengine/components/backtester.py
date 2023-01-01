@@ -32,8 +32,9 @@ class PandasBarBacktester(Account):
         self.register(SubscribeToMarketData, TickMarketDataClock, handler=self.send_market_data)
 
     def send_market_data(self, event: SubscribeToMarketData | TickMarketDataClock):
-        if event.asset not in self.quotes:
-            self.quotes[event.asset] = DataFrameIterator(self.dataframe_provider(event.asset, event.time))
+        with self.lock:
+            if event.asset not in self.quotes:
+                self.quotes[event.asset] = DataFrameIterator(self.dataframe_provider(event.asset, event.time))
 
         for row in self.quotes[event.asset].next_until(event.time):
             # BLOCKING: make sure we wait that each quote tick is processed

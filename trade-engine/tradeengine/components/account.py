@@ -1,19 +1,18 @@
 from __future__ import annotations
+
 import logging
-from abc import abstractmethod
-from collections import defaultdict
-from dataclasses import asdict
 from datetime import datetime
 from itertools import chain
 from threading import Lock
-from typing import Dict, List, Any, Tuple
+from typing import Dict
 
 import pandas as pd
+
+from .component import Component
 from .orderbook import OrderBook
 from .portfolio import Portfolio
 from ..common.tz_compare import timestamp_greater_equal
 from ..events import *
-from .component import Component
 from ..events.data import TickMarketDataClock
 
 _log = logging.getLogger(__name__)
@@ -60,11 +59,10 @@ class Account(Component):
         # BLOCKING: make sure we have the latest market data
         self.fire(TickMarketDataClock(order.asset, order.valid_from))
 
-        # get maximum possible capital and place order
-        balance = self.cash_balance * (1 - self.derive_quantity_slippage)
-
-        # use derive_quantity_slippage to allow market movements from this tick to the next one
         with self.lock:
+            # get maximum possible capital and place order
+            # use derive_quantity_slippage to allow market movements from this tick to the next one
+            balance = self.cash_balance * (1 - self.derive_quantity_slippage)
             price = self.latest_quotes[order.asset].get_price(order.quantity, 'last')
 
         self.fire(Order(order.asset, balance / price, order.limit, order.valid_from, order.valid_to, order.position_id))
@@ -123,11 +121,12 @@ class Account(Component):
         position_ts = position_ts.join(pnl_pct.rename(columns=lambda x: f"{x}_%", level=0))
 
         # join cash and cash %
-        cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
-        position_ts = position_ts.join(
-            pd.concat([cash, (cash / self._starting_balance).rename(('%', '$CASH$'))], axis=1),
-            how = 'outer'
-        )
+        with self.lock:
+            cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
+            position_ts = position_ts.join(
+                pd.concat([cash, (cash / self._starting_balance).rename(('%', '$CASH$'))], axis=1),
+                how = 'outer'
+            )
 
         # return timeseries
         return position_ts.swaplevel(0, 1, axis=1).sort_index(axis=1, level=0, sort_remaining=False)

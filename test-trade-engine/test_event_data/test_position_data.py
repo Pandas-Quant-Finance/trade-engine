@@ -23,8 +23,8 @@ class TestPositionData(TestCase):
         self.assertEqual(120 + 40, ((Position(None, "AAPL", 10, 100) + (-4, 110)) + (-6, 120)).pnl)
 
         self.assertEqual(0, (Position(None, "AAPL", 10, 100) + (4, 110)).pnl)
-        self.assertEqual(1440 / 14, (Position(None, "AAPL", 10, 100) + (4, 110)).price)
-        self.assertEqual((1440 + 720) / 20, ((Position(None, "AAPL", 10, 100) + (4, 110)) + (6, 120)).price)
+        self.assertEqual(1440 / 14, (Position(None, "AAPL", 10, 100) + (4, 110)).cost_basis)
+        self.assertEqual((1440 + 720) / 20, ((Position(None, "AAPL", 10, 100) + (4, 110)) + (6, 120)).cost_basis)
 
     def test_short_position(self):
         self.assertEqual(-100, (Position(None, "AAPL", -10, 100) + (10, 110)).pnl)
@@ -33,8 +33,8 @@ class TestPositionData(TestCase):
         self.assertEqual(40 + 120, ((Position(None, "AAPL", -10, 120) + (4, 110)) + (6, 100)).pnl)
 
         self.assertEqual(0, (Position(None, "AAPL", -10, 100) + (-4, 110)).pnl)
-        self.assertEqual(1440 / 14, (Position(None, "AAPL", -10, 100) + (-4, 110)).price)
-        self.assertEqual((1440 + 720) / 20, ((Position(None, "AAPL", -10, 100) + (-4, 110)) + (-6, 120)).price)
+        self.assertEqual(1440 / 14, (Position(None, "AAPL", -10, 100) + (-4, 110)).cost_basis)
+        self.assertEqual((1440 + 720) / 20, ((Position(None, "AAPL", -10, 100) + (-4, 110)) + (-6, 120)).cost_basis)
 
     def test_swing_position(self):
         self.assertEqual(100, (Position(None, "AAPL", -10, 110) + (20, 100)).pnl)
@@ -79,7 +79,7 @@ class TestPositionData(TestCase):
         # test cost basis
         self.assertListEqual(
             [100, 102.0, 102.0, 100, 101.6, 101.6, 101.6, 104],
-            [p.price for p in seq]
+            [p.cost_basis for p in seq]
         )
 
         # test realized and unrealized pnl

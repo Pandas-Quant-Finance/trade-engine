@@ -26,7 +26,8 @@ class Position(object):
         self.id: str = str(id) if id is not None else self.asset.id
         self.quantity: float = quantity
         self.change: float = kwargs.get("change", quantity)
-        self.price: float = price
+        self.trade_price: float = kwargs.get("trade_price", price)
+        self.cost_basis: float = price
         self.pnl: float = kwargs.get("pnl", 0)
 
     def evaluate(self, price: float, include_trade_delta: bool = True) -> Dict[str, Any]:
@@ -35,8 +36,8 @@ class Position(object):
             "pid": p.id,
             "asset": p.asset.id,
             "trade": self.change if include_trade_delta else None,
-            "cost_basis": self.price,
-            "trade_price": ((self.change * self.price - self.pnl) / self.change) if include_trade_delta else None,
+            "cost_basis": self.cost_basis,
+            "trade_price": self.trade_price if include_trade_delta else None,
             "position": self.quantity,
             "quote": price,
             "value": price * self.quantity,
@@ -51,21 +52,23 @@ class Position(object):
         pnl = 0
 
         if self.quantity > 0 and new_qty < self.quantity:
-            new_price = self.price if new_qty >= 0 else other_price
+            new_cost_basis = self.cost_basis if new_qty >= 0 else other_price
             other_qty = min(-other_qty, self.quantity)
-            pnl = (other_qty * other_price) - (other_qty * self.price)
+            pnl = (other_qty * other_price) - (other_qty * self.cost_basis)
         elif 0 < self.quantity < new_qty:
-            new_price = (self.price * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
+            new_cost_basis = (self.cost_basis * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
         elif self.quantity < 0 and new_qty > self.quantity:
-            new_price = self.price if new_qty <= 0 else other_price
+            new_cost_basis = self.cost_basis if new_qty <= 0 else other_price
             other_qty = min(other_qty, -self.quantity)
-            pnl =( other_qty * self.price) + (-other_qty * other_price)
+            pnl = (other_qty * self.cost_basis) + (-other_qty * other_price)
         elif 0 > self.quantity > new_qty:
-            new_price = (self.price * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
+            new_cost_basis = (self.cost_basis * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
         else:
-            new_price = other_price
+            new_cost_basis = other_price
 
-        return Position(self.id, self.asset, new_qty, new_price, pnl=pnl + self.pnl, change=other[0])
+        return Position(
+            self.id, self.asset, new_qty, new_cost_basis, pnl=pnl + self.pnl, change=other[0], trade_price=other_price
+        )
 
     def __sub__(self, other: Tuple[float, float]):
         return self + (-other[0], other[1])
@@ -81,7 +84,7 @@ class Position(object):
         return hash(self.id) * 101 + hash(self.asset)
 
     def __str__(self):
-        return f"{self.id}, {self.asset}, {self.quantity}, {self.price}, {self.pnl}"
+        return f"{self.id}, {self.asset}, {self.quantity}, {self.cost_basis}, {self.pnl}"
 
 
 class TargetWeights(object):
