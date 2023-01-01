@@ -103,6 +103,7 @@ class TargetWeights(object):
         else:
             self.asset_weights = asset_weights
 
+        self.asset_weights = {a if isinstance(a, Asset) else Asset(a): w for a, w in self.asset_weights.items()}
         self.valid_from: datetime = datetime.fromisoformat(valid_from) if isinstance(valid_from, str) else valid_from
         self.valid_to: datetime = datetime.fromisoformat(valid_to) if isinstance(valid_from, str) else valid_to
         self.position_id = position_id

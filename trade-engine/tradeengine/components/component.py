@@ -17,3 +17,9 @@ class Component(object):
     def fire(self, event):
         for handler in __HANDLERS__[type(event)]:
             handler(event)
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass

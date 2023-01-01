@@ -13,7 +13,36 @@ from ..events import *
 _log = logging.getLogger(__name__)
 
 
-class PandasBarBacktester(Account):
+class Backtester(Account):
+
+    def __init__(
+            self,
+            starting_balance: float = 100,
+            slippage: float = 0,
+            derive_quantity_slippage: float = 0.02,
+            autostart: bool = True
+    ):
+        super().__init__(starting_balance, slippage, derive_quantity_slippage)
+        self.open_events = 0
+        if autostart:
+            self.start()
+
+    # @handler(False)
+    def strategy(self, orders: pd.Series) -> Account:
+        for i, e in orders.items():
+            self.open_events += 1
+            self.fire(e)
+
+        return self.await_result()
+
+    # @handler(False)
+    def await_result(self):
+        # TODO how can i know that we have processed all events
+        self.stop()
+        return self
+
+
+class PandasBarBacktester(Backtester):
 
     def __init__(
             self,

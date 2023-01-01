@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from collections import defaultdict
 from copy import deepcopy
@@ -103,6 +104,22 @@ class Portfolio(Component):
             )
 
             return df_ts.swaplevel(0, 1, axis=1)
+
+    def get_quantity(self, asset: Asset | str, pid=None):
+        if not isinstance(asset, Asset):
+            asset = Asset(asset)
+
+        with self.lock:
+            if not asset in self.positions:
+                return 0
+
+            if pid is None:
+                return sum([p.quantity for p in self.positions[asset].values()])
+
+            if not pid in self.positions[asset]:
+                return 0
+
+            return self.positions[asset][pid].quantity
 
     @property
     def total_position_value(self):

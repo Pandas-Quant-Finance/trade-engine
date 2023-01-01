@@ -24,6 +24,7 @@ class Account(Component):
         super().__init__()
         self._starting_balance = starting_balance
         self.derive_quantity_slippage = derive_quantity_slippage
+        self.min_weight = 1e-3
 
         self.lock = Lock()
         self.portfolio = Portfolio()
@@ -67,17 +68,35 @@ class Account(Component):
 
         self.fire(Order(order.asset, balance / price, order.limit, order.valid_from, order.valid_to, order.position_id))
 
-    def place_target_weights_oder(self, target_weights: TargetWeights, slippage: float = 0.02, min_weight=1e-3):
+    def place_target_weights_oder(self, target_weights: TargetWeights):
         # BLOCKING: make sure we have the latest market data
         for asset in target_weights.asset_weights.keys():
             self.fire(TickMarketDataClock(asset, target_weights.valid_from))
 
-        # TODO calculate the quantity from the weights
-        #  find the difference between the current position quantity and the target quantity
-        #  place orders of quantity if the quantity is not negligible small
-        #  use derive_quantity_slippage
-        #  use with self.lock: for self.quotes access
-        pass
+        orders = []
+        with self.lock:
+            total_balance = self.cash_balance * (1 - self.derive_quantity_slippage) + self.portfolio.total_position_value
+            for asset, weight in target_weights.asset_weights.items():
+                if abs(weight) < self.min_weight:
+                    continue
+
+                pid = target_weights.position_id + "/" + asset.id
+                target_quantity = (total_balance * weight) / self.latest_quotes[asset].get_price(weight, 'last')
+                current_quantity = self.portfolio.get_quantity(asset, pid)
+                trade_quantity = target_quantity - current_quantity
+
+                orders.append(
+                    Order(
+                        asset,
+                        trade_quantity,
+                        valid_from=target_weights.valid_from,
+                        valid_to=target_weights.valid_to,
+                        position_id=pid
+                    )
+                )
+
+        for o in orders:
+            self.fire(o)
 
     def close_position(self, order: CloseOrder):
         # BLOCKING: we need all the latest quotes such that we can calculate the current weights

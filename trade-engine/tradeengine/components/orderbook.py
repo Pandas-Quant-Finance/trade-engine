@@ -13,11 +13,14 @@ from .component import Component
 
 class OrderBook(Component):
 
-    def __init__(self, slippage: float = 0):
+    def __init__(self, slippage: float = 0, min_quantity: float = 1e-4):
         super().__init__()
+        self.min_quantity = min_quantity
         self.orderbook: Dict[Asset, List[Order]] = defaultdict(list)
         self.slippage = slippage
+
         self.lock = Lock()
+
         self.register(Quote, handler=self.on_quote_update)
         self.register(Order, BasketOrder, handler=self.place_order)
         self.register(CancelOrder, handler=self.cancel_order)
@@ -51,7 +54,7 @@ class OrderBook(Component):
         else:
             self.fire(SubscribeToMarketData(order.asset, order.valid_from))
             with self.lock:
-                if abs(order.quantity) > 1e-4:
+                if abs(order.quantity) > self.min_quantity:
                     self.orderbook[order.asset].append(order)
 
         return self

@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 import os
 from tradeengine.components.backtester import PandasBarBacktester
-from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order
+from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights
 
 # show all columns
 pd.set_option('display.max_columns', None)
 
 path = os.path.dirname(os.path.abspath(__file__))
-df = pd.read_csv(f"{path}/../aapl.csv", index_col="Date", parse_dates=True)['2022-01-01':]
+df_aapl = pd.read_csv(f"{path}/../aapl.csv", index_col="Date", parse_dates=True)['2022-01-01':]
+df_msft = pd.read_csv(f"{path}/../msft.csv", index_col="Date", parse_dates=True)['2022-01-01':]
 
 
 class TestBackTester(TestCase):
@@ -27,7 +28,7 @@ class TestBackTester(TestCase):
         bt.close_position(CloseOrder(None, valid_from='2022-01-28'))
 
         # the pnl should be very close to just the move of the stock
-        buy_and_hold = ((df.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
+        buy_and_hold = ((df_aapl.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
         #print(df.iloc[0, 3], df.iloc[-1, 3])
 
         dfhist = bt.get_history()
@@ -94,4 +95,25 @@ class TestBackTester(TestCase):
         #print(dfhist.dropna())
 
 
+    def test_target_weights(self):
+        bt = PandasBarBacktester(
+            lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
+            lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
+            '2022-01-01',
+            100
+        )
 
+        for idx in df_aapl.index:
+            bt.place_target_weights_oder(TargetWeights({"AAPL": 0.5, "MSFT": 0.5}, valid_from=idx))
+
+        msft_aapl_bah = df_msft["Close"].iloc[-1] / df_msft["Close"].iloc[0] - 1  # -0.26888721433905904
+        aapl_bah = df_aapl["Close"].iloc[-1] / df_aapl["Close"].iloc[0] - 1       # -0.16859730629997294
+        print(msft_aapl_bah, aapl_bah)
+
+        dfhist = bt.get_history()
+        print(dfhist["TOTAL", "pnl_%"].iloc[-1])
+        #print(dfhist)
+
+        self.assertGreater(dfhist["TOTAL", "pnl_%"].iloc[-1], msft_aapl_bah)
+        self.assertLess(dfhist["TOTAL", "pnl_%"].iloc[-1], aapl_bah)
+        self.assertAlmostEqual(dfhist["TOTAL", "pnl_%"].iloc[-1], (msft_aapl_bah + aapl_bah) / 2, 2)
