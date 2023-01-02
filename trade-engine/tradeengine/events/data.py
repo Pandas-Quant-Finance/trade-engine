@@ -70,6 +70,10 @@ class Position(object):
             self.id, self.asset, new_qty, new_cost_basis, pnl=pnl + self.pnl, change=other[0], trade_price=other_price
         )
 
+    @property
+    def value(self):
+        return self.quantity * self.trade_price
+
     def __sub__(self, other: Tuple[float, float]):
         return self + (-other[0], other[1])
 

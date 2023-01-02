@@ -75,7 +75,9 @@ class Account(Component):
 
         orders = []
         with self.lock:
-            total_balance = self.cash_balance * (1 - self.derive_quantity_slippage) + self.portfolio.total_position_value
+            total_balance = (self.cash_balance + self.portfolio.total_position_value) * (1 - self.derive_quantity_slippage)
+            # print(total_balance)
+
             for asset, weight in target_weights.asset_weights.items():
                 if abs(weight) < self.min_weight:
                     continue

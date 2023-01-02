@@ -35,7 +35,7 @@ class OrderBook(Component):
                 if timestamp_greater(quote.time, o.valid_from):
                     execution_price = quote.get_price(o.quantity, o.limit, self.slippage)
                     if execution_price is not None:
-                        # execute trade and wait for event complete
+                        # BLOCKING: execute trade and wait for event complete
                         self.fire(TradeExecution(o.asset, o.quantity, execution_price, quote.time, quote, o.position_id))
                         self._remove(o)
                     else:

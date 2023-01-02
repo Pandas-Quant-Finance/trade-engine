@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import pytest
 
-from tradeengine.events import TargetWeights
+from tradeengine.events import TargetWeights, Asset
 
 
 class TestTargetWeightsData(TestCase):
@@ -10,7 +10,7 @@ class TestTargetWeightsData(TestCase):
     def test_weights(self):
         tw = TargetWeights((["A", "B"], [0.4, 0.6]))
         self.assertEqual(
-            {'A': 0.4, 'B': 0.6},
+            {Asset('A'): 0.4, Asset('B'): 0.6},
             tw.asset_weights
         )
 

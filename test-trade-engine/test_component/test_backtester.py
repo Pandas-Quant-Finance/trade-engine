@@ -114,6 +114,11 @@ class TestBackTester(TestCase):
         print(dfhist["TOTAL", "pnl_%"].iloc[-1])
         #print(dfhist)
 
+        self.assertGreater(dfhist["TOTAL", "value"].min(), 70)
+        self.assertLess(dfhist["$CASH$", "balance"][1:].max(), 20)
+
         self.assertGreater(dfhist["TOTAL", "pnl_%"].iloc[-1], msft_aapl_bah)
         self.assertLess(dfhist["TOTAL", "pnl_%"].iloc[-1], aapl_bah)
+
+        # should be approximately -21 %
         self.assertAlmostEqual(dfhist["TOTAL", "pnl_%"].iloc[-1], (msft_aapl_bah + aapl_bah) / 2, 2)

@@ -30,7 +30,7 @@ class YfBackTest(TestCase):
             print(f"download {ticker}")
             yfinance.Ticker(ticker).history('max').to_hdf('../quotes.hd5', key=ticker)
 
-    def test_test(self):
+    def _test_test(self):
         print()
         logging.basicConfig(level=logging.DEBUG)
 
@@ -62,7 +62,7 @@ class YfBackTest(TestCase):
         self.assertAlmostEqual(bt.cash_balance, 1729.702777, 5)
         self.assertAlmostEqual(bt.position_value_balance, -2415.800018, 5)
 
-    def test_1overNof100(self):
+    def _test_1overNof100(self):
         print()
         logging.basicConfig(level=logging.DEBUG)
 

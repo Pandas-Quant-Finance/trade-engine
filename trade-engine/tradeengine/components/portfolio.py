@@ -46,8 +46,9 @@ class Portfolio(Component):
 
             # update position timeseries
             for pid, pos in self.positions[quote.asset].items():
-                self.position_value[pid] = pos.quantity * price
-                self.timeseries[pid][quote.time] = pos.evaluate(price, include_trade_delta=False)
+                val_pos = pos.evaluate(price, include_trade_delta=False)
+                self.position_value[pid] = val_pos["value"]
+                self.timeseries[pid][quote.time] = val_pos
 
     def on_trade_execution(self, trade: TradeExecution):
         _log.debug(f"got new trade execution {trade}")
@@ -63,7 +64,7 @@ class Portfolio(Component):
             #  the latest position value
             #  start an entry in the timeseries
             self.latest_quote[trade.asset] = trade.time, trade.price
-            self.position_value[trade.position_id] = trade.quantity * trade.price
+            self.position_value[trade.position_id] = self.positions[trade.asset][trade.position_id].value
             self.timeseries[trade.position_id][trade.time] = \
                 self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'))
 
