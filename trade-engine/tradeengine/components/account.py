@@ -133,21 +133,28 @@ class Account(Component):
         for asset in chain(self.portfolio.assets, self.orderbook.assets):
             self.fire(TickMarketDataClock(asset, time))
 
-        position_ts = self.portfolio.get_timeseries().swaplevel(0, 1, axis=1)
+        position_ts = self.portfolio.get_timeseries()
+        position_ts = position_ts.swaplevel(0, 1, axis=1)
         if len(position_ts) <= 0:
             return pd.DataFrame({})
 
-        # join pnl %
-        pnl_pct = position_ts[["pnl", "realized_pnl", "unrealized_pnl"]] * (1 / self._starting_balance)
-        position_ts = position_ts.join(pnl_pct.rename(columns=lambda x: f"{x}_%", level=0))
-
-        # join cash and cash %
         with self.lock:
             cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
-            position_ts = position_ts.join(
-                pd.concat([cash, (cash / self._starting_balance).rename(('%', '$CASH$'))], axis=1),
-                how = 'outer'
-            )
+
+        # join cash and cash %
+        position_ts = pd.concat(
+            [
+                pd.concat([position_ts[[]], cash, (cash / self._starting_balance).rename(('%', '$CASH$'))], axis=1).ffill(),
+                position_ts
+            ],
+            join='outer',
+            axis=1,
+            sort=True
+        )
+
+        # join pnl %
+        pnl_pct = (position_ts[["value"]] + position_ts[[('balance', '$CASH$')]].values) * (1 / self._starting_balance) - 1
+        position_ts = position_ts.join(pnl_pct.rename(columns=lambda x: f"pnl_%", level=0))
 
         # return timeseries
         return position_ts.swaplevel(0, 1, axis=1).sort_index(axis=1, level=0, sort_remaining=False)

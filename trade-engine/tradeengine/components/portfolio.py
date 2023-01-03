@@ -63,10 +63,10 @@ class Portfolio(Component):
             #  the latest quote
             #  the latest position value
             #  start an entry in the timeseries
+            pos_val = self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'))
             self.latest_quote[trade.asset] = trade.time, trade.price
-            self.position_value[trade.position_id] = self.positions[trade.asset][trade.position_id].value
-            self.timeseries[trade.position_id][trade.time] = \
-                self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'))
+            self.position_value[trade.position_id] = pos_val["value"]
+            self.timeseries[trade.position_id][trade.time] = pos_val
 
     def get_weights(self, cash: float = 0):
         with self.lock:

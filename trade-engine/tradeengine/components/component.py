@@ -23,3 +23,7 @@ class Component(object):
 
     def stop(self):
         pass
+
+    def get_handlers(self):
+        return __HANDLERS__
+

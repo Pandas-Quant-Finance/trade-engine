@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 from tradeengine.components.backtester import PandasBarBacktester
+from tradeengine.components.component import Component
 from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights
 
 # show all columns
@@ -17,6 +18,7 @@ df_msft = pd.read_csv(f"{path}/../msft.csv", index_col="Date", parse_dates=True)
 class TestBackTester(TestCase):
 
     def test_simple(self):
+        Component().get_handlers().clear()
         bt = PandasBarBacktester(
             lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
             lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
@@ -41,6 +43,7 @@ class TestBackTester(TestCase):
         self.assertLess(dfhist["AAPL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
 
     def test_swing(self):
+        Component().get_handlers().clear()
         bt = PandasBarBacktester(
             lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
             lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
@@ -75,12 +78,6 @@ class TestBackTester(TestCase):
         )
 
         np.testing.assert_almost_equal(
-            np.array([-0.01458967, 0.03908826, 0.02617845, -0.13486089, -0.11666301]),
-            dfhist.dropna()["TOTAL", "pnl_%"].values,
-            5
-        )
-
-        np.testing.assert_almost_equal(
             np.array([-2.91793319, -4.60095592, 10.13102592, -0.8376005, 0.        ]),
             dfhist.dropna()["TOTAL", "unrealized_pnl"].values,
             5
@@ -92,10 +89,37 @@ class TestBackTester(TestCase):
             5
         )
 
+        np.testing.assert_almost_equal(
+            np.array([ -2.91793,   7.81765,   5.23569, -26.97218, -23.3326 ]),
+            dfhist.dropna()["TOTAL", "pnl"].values,
+            5
+        )
+
+        np.testing.assert_almost_equal(
+            np.array([-178.95944,  174.05972, -162.27585,  174.22166,    0.     ]),
+            dfhist.dropna()["TOTAL", "value"].values,
+            5
+        )
+
+        np.testing.assert_almost_equal(
+            np.array([381.87738,  42.95984, 347.24949,   0.48136, 176.6674]),
+            dfhist.dropna()["$CASH$", "balance"].values,
+            5
+        )
+
+        np.testing.assert_almost_equal(
+            (
+                np.array([-178.95944, 174.05972, -162.27585, 174.22166, 0.]) +\
+                np.array([381.87738, 42.95984, 347.24949, 0.48136, 176.6674])
+            ) / 200 - 1,
+            dfhist.dropna()["TOTAL", "pnl_%"].values,
+            5
+        )
+
         #print(dfhist.dropna())
 
-
     def test_target_weights(self):
+        Component().get_handlers().clear()
         bt = PandasBarBacktester(
             lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
             lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
@@ -111,7 +135,7 @@ class TestBackTester(TestCase):
         print(msft_aapl_bah, aapl_bah)
 
         dfhist = bt.get_history()
-        print(dfhist["TOTAL", "pnl_%"].iloc[-1])
+        print(len(dfhist), dfhist["TOTAL", "pnl_%"].iloc[-1])
         #print(dfhist)
 
         self.assertGreater(dfhist["TOTAL", "value"].min(), 70)
