@@ -1,8 +1,12 @@
+import datetime
 from unittest import TestCase
 
 import numpy as np
 import pandas as pd
 import os
+
+import pytest
+
 from tradeengine.components.backtester import PandasBarBacktester
 from tradeengine.components.component import Component
 from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights
@@ -146,3 +150,23 @@ class TestBackTester(TestCase):
 
         # should be approximately -21 %
         self.assertAlmostEqual(dfhist["TOTAL", "pnl_%"].iloc[-1], (msft_aapl_bah + aapl_bah) / 2, 2)
+
+    @pytest.mark.skipif(False, reason="takes a long time")
+    def test_target_weights_performance(self):
+        Component().get_handlers().clear()
+        bt = PandasBarBacktester(
+            lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()[:-3]}.csv", index_col="Date", parse_dates=True)[x:],
+            lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
+            '2020-01-01',
+            100
+        )
+
+        assets = 300
+        target_weights = {f"AAPL{i:03d}": 1.0 / assets for i in range(assets)}
+        start = datetime.datetime.now()
+        for idx in df_aapl.index:
+            bt.place_target_weights_oder(TargetWeights(target_weights, valid_from=idx))
+
+        duration = datetime.datetime.now() - start
+        print(duration.seconds)
+        self.assertLessEqual(duration.seconds, 31)
