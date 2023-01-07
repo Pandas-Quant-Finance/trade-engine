@@ -58,7 +58,8 @@ class PandasBarBacktester(Backtester):
 
         self.starting_date = datetime.fromisoformat(starting_date) if isinstance(starting_date, str) else starting_date
         self.quotes: Dict[Asset, DataFrameIterator] = {}
-        self.register(SubscribeToMarketData, TickMarketDataClock, handler=self.send_market_data)
+
+        self.register_event(SubscribeToMarketData, TickMarketDataClock, handler=self.send_market_data)
 
     def send_market_data(self, event: SubscribeToMarketData | TickMarketDataClock):
         with self.lock:

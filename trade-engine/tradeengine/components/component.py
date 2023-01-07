@@ -2,20 +2,32 @@ from collections import defaultdict
 from typing import Dict, List
 
 
-__HANDLERS__: Dict[type, List[callable]] = defaultdict(list)
-
 
 class Component(object):
 
     def __init__(self):
-        pass
+        self._handlers: Dict[type, List[callable]] = defaultdict(list)
 
-    def register(self, *events: type, handler: callable):
+    def register(self, parent: 'Component'):
+        # pass all event hanlers to the parent
+        for k, v in self._handlers.items():
+            v.extend(parent._handlers[k])
+            parent._handlers[k] = v
+
+        # clear all own event handlers
+        self._handlers.clear()
+
+        # make sure self fire acutally fires the parents fire
+        self.fire = parent.fire
+
+        return self
+
+    def register_event(self, *events: type, handler: callable):
         for event in events:
-            __HANDLERS__[event].append(handler)
+            self._handlers[event].append(handler)
 
     def fire(self, event):
-        for handler in __HANDLERS__[type(event)]:
+        for handler in self._handlers[type(event)]:
             handler(event)
 
     def start(self):
@@ -25,5 +37,5 @@ class Component(object):
         pass
 
     def get_handlers(self):
-        return __HANDLERS__
+        return self._handlers
 

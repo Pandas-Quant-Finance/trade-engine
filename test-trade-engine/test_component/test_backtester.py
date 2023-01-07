@@ -31,7 +31,7 @@ class TestBackTester(TestCase):
         )
 
         bt.place_maximum_order(MaximumOrder("AAPL", valid_from='2022-01-03'))
-        bt.close_position(CloseOrder(None, valid_from='2022-01-28'))
+        bt.place_close_position_order(CloseOrder(None, valid_from='2022-01-28'))
 
         # the pnl should be very close to just the move of the stock
         buy_and_hold = ((df_aapl.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
@@ -62,6 +62,7 @@ class TestBackTester(TestCase):
         bt.place_order(Order("AAPL", -1, valid_from='2022-03-28'))  # L+ 176 -26 + 3 = -23
 
         dfhist = bt.get_history()
+        print(dfhist.columns.tolist())
 
         np.testing.assert_almost_equal(
             np.array([178.95944214, 174.0597229, 162.27584839, 174.22166443, 178.4495697 ]),

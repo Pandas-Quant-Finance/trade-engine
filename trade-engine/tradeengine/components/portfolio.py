@@ -19,13 +19,14 @@ class Portfolio(Component):
 
     def __init__(self):
         super().__init__()
+        self.lock = Lock()
         self.positions: Dict[Asset, Dict[str, Position]] = defaultdict(dict)
         self.timeseries: Dict[str, Dict[datetime, dict]] = defaultdict(dict)
         self.latest_quote: Dict[Asset, Tuple[datetime, float]] = {}
         self.position_value: Dict[str, float] = defaultdict(lambda: 0)
-        self.lock = Lock()
-        self.register(Quote, handler=self.on_quote_update)
-        self.register(TradeExecution, handler=self.on_trade_execution)
+
+        self.register_event(Quote, handler=self.on_quote_update)
+        self.register_event(TradeExecution, handler=self.on_trade_execution)
 
     def on_quote_update(self, quote: Quote):
         with self.lock:
@@ -48,7 +49,8 @@ class Portfolio(Component):
             for pid, pos in self.positions[quote.asset].items():
                 val_pos = pos.evaluate(price, include_trade_delta=False)
                 self.position_value[pid] = val_pos["value"]
-                self.timeseries[pid][quote.time] = val_pos
+                if quote.time not in self.timeseries[pid]:
+                    self.timeseries[pid][quote.time] = val_pos
 
     def on_trade_execution(self, trade: TradeExecution):
         _log.debug(f"got new trade execution {trade}")
@@ -63,7 +65,7 @@ class Portfolio(Component):
             #  the latest quote
             #  the latest position value
             #  start an entry in the timeseries
-            pos_val = self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'))
+            pos_val = self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'), include_trade_delta=True)
             self.latest_quote[trade.asset] = trade.time, trade.price
             self.position_value[trade.position_id] = pos_val["value"]
             self.timeseries[trade.position_id][trade.time] = pos_val

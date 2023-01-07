@@ -12,11 +12,11 @@ class TestOrderBook(TestCase):
             execution_cnt[0] += 1
 
         ob = OrderBook()
-        ob.register(TradeExecution, handler=handler)
+        ob.register_event(TradeExecution, handler=handler)
 
-        ob.place_order(Order("AAPL", 10, 100, valid_from='2022-01-08'))
-        ob.place_order(Order("AAPL", 10, 98, valid_from='2022-01-08', valid_to=3, position_id='A'))
-        ob.place_order(Order("AAPL", 10, 95, valid_from='2022-01-08', valid_to=3, position_id='A'))
+        ob.on_place_order(Order("AAPL", 10, 100, valid_from='2022-01-08'))
+        ob.on_place_order(Order("AAPL", 10, 98, valid_from='2022-01-08', valid_to=3, position_id='A'))
+        ob.on_place_order(Order("AAPL", 10, 95, valid_from='2022-01-08', valid_to=3, position_id='A'))
 
         ob.on_quote_update(Quote("AAPL", '2022-01-08', 110))
         self.assertEqual(0, execution_cnt[0])
@@ -31,9 +31,9 @@ class TestOrderBook(TestCase):
 
     def test_order_expiration(self):
         ob = OrderBook()
-        ob.place_order(Order("AAPL", 10, 100, valid_from='2022-01-08'))
-        ob.place_order(Order("AAPL", 10, 100, valid_from='2022-01-08', valid_to=2, position_id='A'))
-        ob.place_order(Order("AAPL", 10, 100, valid_from='2022-01-08', valid_to='2022-01-11', position_id='B'))
+        ob.on_place_order(Order("AAPL", 10, 100, valid_from='2022-01-08'))
+        ob.on_place_order(Order("AAPL", 10, 100, valid_from='2022-01-08', valid_to=2, position_id='A'))
+        ob.on_place_order(Order("AAPL", 10, 100, valid_from='2022-01-08', valid_to='2022-01-11', position_id='B'))
 
         self.assertEqual(1, len(ob.orderbook))
         self.assertEqual(3, len(ob.orderbook[Asset("AAPL")]))
@@ -49,5 +49,5 @@ class TestOrderBook(TestCase):
         ob.on_quote_update(Quote("AAPL", '2022-01-12', 110))
         self.assertEqual(1, len(ob.orderbook[Asset("AAPL")]))
 
-        ob.cancel_order(ob.orderbook[Asset("AAPL")][0])
+        ob.on_cancel_order(ob.orderbook[Asset("AAPL")][0])
         self.assertEqual(0, len(ob.orderbook[Asset("AAPL")]))

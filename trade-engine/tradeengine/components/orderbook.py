@@ -21,9 +21,9 @@ class OrderBook(Component):
 
         self.lock = Lock()
 
-        self.register(Quote, handler=self.on_quote_update)
-        self.register(Order, BasketOrder, handler=self.place_order)
-        self.register(CancelOrder, handler=self.cancel_order)
+        self.register_event(Quote, handler=self.on_quote_update)
+        self.register_event(Order, BasketOrder, handler=self.on_place_order)
+        self.register_event(CancelOrder, handler=self.on_cancel_order)
 
     def on_quote_update(self, quote: Quote):
         # check order book if order was triggered
@@ -47,10 +47,10 @@ class OrderBook(Component):
                                 if not o.valid_after_subtract_tick():
                                     self._remove(o)
 
-    def place_order(self, order: Order | BasketOrder):
+    def on_place_order(self, order: Order | BasketOrder):
         if isinstance(order, BasketOrder):
             for o in order.orders:
-                self.place_order(o)
+                self.on_place_order(o)
         else:
             self.fire(SubscribeToMarketData(order.asset, order.valid_from))
             with self.lock:
@@ -59,7 +59,7 @@ class OrderBook(Component):
 
         return self
 
-    def cancel_order(self, order: Order | CancelOrder):
+    def on_cancel_order(self, order: Order | CancelOrder):
         with self.lock:
             return self._remove(order.order if isinstance(order, CancelOrder) else order)
 

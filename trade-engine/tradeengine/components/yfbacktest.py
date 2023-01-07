@@ -25,7 +25,7 @@ class PandasBarBacktester(Account):
         self.dataframe_provider = dataframe_provider
         self.starting_date = datetime.fromisoformat(starting_date) if isinstance(starting_date, str) else starting_date
         self.quotes: Dict[str, pd.DataFrame] = {}
-        self.register(SubscribeToMarketData, handler=self.prepare_to_trade)
+        self.register_event(SubscribeToMarketData, handler=self.prepare_to_trade)
 
     def prepare_to_trade(self, pre_order: SubscribeToMarketData):
         # implement me

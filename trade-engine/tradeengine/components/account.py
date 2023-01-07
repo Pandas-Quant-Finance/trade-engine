@@ -27,34 +27,21 @@ class Account(Component):
         self.min_weight = 1e-3
 
         self.lock = Lock()
-        self.portfolio = Portfolio()
-        self.orderbook = OrderBook(slippage)
+        self.portfolio = Portfolio().register(self)
+        self.orderbook = OrderBook(slippage).register(self)
 
         self.cash_balance = self._starting_balance
         self.cash_timeseries: Dict[datetime, float] = {datetime.fromisoformat('0001-01-01'): self._starting_balance}
         self.latest_quotes: Dict[Asset, Quote] = {}
 
-        self.register(TradeExecution, handler=self.on_trade_execution)
-        self.register(TargetWeights, handler=self.place_target_weights_oder)
-        self.register(MaximumOrder, handler=self.place_maximum_order)
-        self.register(CloseOrder, handler=self.close_position)
-        self.register(Quote, handler=self.on_quote_update)
-
-    def on_quote_update(self, quote: Quote):
-        with self.lock:
-            if quote.asset in self.latest_quotes:
-                if timestamp_greater_equal(quote.time, self.latest_quotes[quote.asset].time):
-                    self.latest_quotes[quote.asset] = quote
-            else:
-                self.latest_quotes[quote.asset] = quote
-
-    def on_trade_execution(self, trade: TradeExecution):
-        with self.lock:
-            self.cash_balance += (-trade.quantity * trade.price)
-            self.cash_timeseries[trade.time] = self.cash_balance
+        self.register_event(TradeExecution, handler=self.on_trade_execution)
+        self.register_event(TargetWeights, handler=self.place_target_weights_oder)
+        self.register_event(MaximumOrder, handler=self.place_maximum_order)
+        self.register_event(CloseOrder, handler=self.on_close_position)
+        self.register_event(Quote, handler=self.on_quote_update)
 
     def place_order(self, order: Order):
-        self.orderbook.place_order(order)
+        self.fire(order)
 
     def place_maximum_order(self, order: MaximumOrder):
         # BLOCKING: make sure we have the latest market data
@@ -100,7 +87,23 @@ class Account(Component):
         for o in orders:
             self.fire(o)
 
-    def close_position(self, order: CloseOrder):
+    def place_close_position_order(self, order: CloseOrder):
+        self.fire(order)
+
+    def on_quote_update(self, quote: Quote):
+        with self.lock:
+            if quote.asset in self.latest_quotes:
+                if timestamp_greater_equal(quote.time, self.latest_quotes[quote.asset].time):
+                    self.latest_quotes[quote.asset] = quote
+            else:
+                self.latest_quotes[quote.asset] = quote
+
+    def on_trade_execution(self, trade: TradeExecution):
+        with self.lock:
+            self.cash_balance += (-trade.quantity * trade.price)
+            self.cash_timeseries[trade.time] = self.cash_balance
+
+    def on_close_position(self, order: CloseOrder):
         # BLOCKING: we need all the latest quotes such that we can calculate the current weights
         for asset in chain(self.portfolio.assets, self.orderbook.assets):
             self.fire(TickMarketDataClock(asset, order.valid_from))
