@@ -102,13 +102,15 @@ class TargetWeights(object):
     ):
         if isinstance(asset_weights, pd.Series):
             self.asset_weights = asset_weights.to_dict()
+            self.valid_from = asset_weights.name.to_pydatetime()
         elif isinstance(asset_weights, tuple):
             self.asset_weights = dict(zip(*asset_weights))
+            self.valid_from: datetime = datetime.fromisoformat(valid_from) if isinstance(valid_from, str) else valid_from
         else:
             self.asset_weights = asset_weights
+            self.valid_from: datetime = datetime.fromisoformat(valid_from) if isinstance(valid_from, str) else valid_from
 
         self.asset_weights = {a if isinstance(a, Asset) else Asset(a): w for a, w in self.asset_weights.items()}
-        self.valid_from: datetime = datetime.fromisoformat(valid_from) if isinstance(valid_from, str) else valid_from
         self.valid_to: datetime = datetime.fromisoformat(valid_to) if isinstance(valid_from, str) else valid_to
         self.position_id = position_id
 

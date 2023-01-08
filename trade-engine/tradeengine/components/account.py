@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import chain
 from threading import Lock
 from typing import Dict
@@ -31,7 +31,7 @@ class Account(Component):
         self.orderbook = OrderBook(slippage).register(self)
 
         self.cash_balance = self._starting_balance
-        self.cash_timeseries: Dict[datetime, float] = {datetime.fromisoformat('0001-01-01'): self._starting_balance}
+        self.cash_timeseries: Dict[datetime, float] = {None: self._starting_balance}
         self.latest_quotes: Dict[Asset, Quote] = {}
 
         self.register_event(TradeExecution, handler=self.on_trade_execution)
@@ -40,9 +40,25 @@ class Account(Component):
         self.register_event(CloseOrder, handler=self.on_close_position)
         self.register_event(Quote, handler=self.on_quote_update)
 
+    # @handler(False)
+    def place_all_orders(self, s: pd.Series):
+        for date, item in s.items():
+            if isinstance(item, Order):
+                self.place_order(item)
+            elif isinstance(item, MaximumOrder):
+                self.place_maximum_order(item)
+            elif isinstance(item, TargetWeights):
+                self.place_target_weights_oder(item)
+            elif isinstance(item, CloseOrder):
+                self.place_close_position_order(item)
+            else:
+                raise ValueError(f"Unknown order of type {type(item)}")
+
+    # @handler(False)
     def place_order(self, order: Order):
         self.fire(order)
 
+    # @handler(False)
     def place_maximum_order(self, order: MaximumOrder):
         # BLOCKING: make sure we have the latest market data
         self.fire(TickMarketDataClock(order.asset, order.valid_from))
@@ -55,10 +71,13 @@ class Account(Component):
 
         self.fire(Order(order.asset, balance / price, order.limit, order.valid_from, order.valid_to, order.position_id))
 
+    # @handler(False)
     def place_target_weights_oder(self, target_weights: TargetWeights):
         # BLOCKING: make sure we have the latest market data
         for asset in target_weights.asset_weights.keys():
             self.fire(TickMarketDataClock(asset, target_weights.valid_from))
+            if not asset in self.latest_quotes:
+                _log.warning(f"seems we have no price for {asset} <= {target_weights.valid_from}")
 
         orders = []
         with self.lock:
@@ -87,6 +106,7 @@ class Account(Component):
         for o in orders:
             self.fire(o)
 
+    # @handler(False)
     def place_close_position_order(self, order: CloseOrder):
         self.fire(order)
 
@@ -123,6 +143,7 @@ class Account(Component):
                     pos = poss[order.position]
                     self.fire(Order(ass, pos.quantity, order.limit, order.valid_from, position_id=order.position))
 
+    # @handler(False)
     def get_current_weights(self, time: datetime | str = datetime.now(), pid: str = '') -> Dict[Asset, float]:
         # BLOCKING: we need all the latest quotes such that we can calculate the current weights
         for asset in chain(self.portfolio.assets, self.orderbook.assets):
@@ -131,6 +152,7 @@ class Account(Component):
         with self.lock:
             return self.portfolio.get_weights(self.cash_balance)
 
+    # @handler(False)
     def get_history(self, time: datetime | str = datetime.now()):
         # BLOCKING: we need all the latest quotes such that we can calculate the current weights
         for asset in chain(self.portfolio.assets, self.orderbook.assets):
@@ -143,6 +165,7 @@ class Account(Component):
 
         with self.lock:
             cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
+            cash = cash.fillna(position_ts.index[0] - timedelta(days=1), limit=1)
 
         # join cash and cash %
         position_ts = pd.concat(
@@ -152,7 +175,6 @@ class Account(Component):
             ],
             join='outer',
             axis=1,
-            sort=True
         )
 
         # join pnl %
@@ -160,10 +182,11 @@ class Account(Component):
         position_ts = position_ts.join(pnl_pct.rename(columns=lambda x: f"pnl_%", level=0))
 
         # return timeseries
-        return position_ts.swaplevel(0, 1, axis=1).sort_index(axis=1, level=0, sort_remaining=False)
+        return position_ts.swaplevel(0, 1, axis=1)\
+            .sort_index(axis=0)\
+            .sort_index(axis=1, level=0, sort_remaining=False)
 
-
-    @property
+    @property  # @handler(False)
     def total_balance(self, time = None):
         if time is not None:
             # BLOCKING: make sure we have the latest quotes

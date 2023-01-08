@@ -64,7 +64,11 @@ class PandasBarBacktester(Backtester):
     def send_market_data(self, event: SubscribeToMarketData | TickMarketDataClock):
         with self.lock:
             if event.asset not in self.quotes:
-                self.quotes[event.asset] = DataFrameIterator(self.dataframe_provider(event.asset, event.time))
+                df = self.dataframe_provider(event.asset, event.time)
+                if len(df) <= 0:
+                    _log.warning(f"empty dataframe for {event.asset}")
+
+                self.quotes[event.asset] = DataFrameIterator(df)
 
         for row in self.quotes[event.asset].next_until(event.time):
             # BLOCKING: make sure we wait that each quote tick is processed

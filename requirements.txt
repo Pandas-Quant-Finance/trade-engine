@@ -1,2 +1,3 @@
 tables
 yfinance
+quantstats[stats]

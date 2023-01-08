@@ -43,8 +43,8 @@ def _eventually_localize(index: pd.DatetimeIndex, timestamp: str | date | dateti
             timestamp = pd.Timestamp.fromisoformat(timestamp).tz_localize(index.tz)
         elif isinstance(timestamp, (date, datetime)):
             if getattr(timestamp, 'tzinfo', None) is None:
-                _LOG.warning(f"localize timestamp {timestamp} to {index.tz}")
-                timestamp = pd.Timestamp(timestamp).tz_localize(index.tz)
+                _LOG.warning(f"localize timestamp {timestamp} to {index_tz}")
+                timestamp = pd.Timestamp(timestamp).tz_localize(index_tz)
     else:
         _LOG.warning(f"remove timezone from {timestamp}")
         timestamp = pd.Timestamp(timestamp).tz_localize(None)
