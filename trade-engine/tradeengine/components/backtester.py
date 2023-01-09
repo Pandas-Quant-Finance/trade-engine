@@ -24,7 +24,14 @@ class Backtester(Account):
             min_target_weight: float = 1e-4,
             autostart: bool = True
     ):
-        super().__init__(starting_balance, slippage, derive_quantity_slippage, order_minimum_quantity, min_target_weight)
+        super().__init__(
+            starting_balance,
+            slippage,
+            derive_quantity_slippage,
+            order_minimum_quantity,
+            min_target_weight
+        )
+
         self.open_events = 0
         if autostart:
             self.start()

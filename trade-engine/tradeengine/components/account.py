@@ -47,22 +47,40 @@ class Account(Component):
         self.register_event(CloseOrder, handler=self.on_close_position)
         self.register_event(Quote, handler=self.on_quote_update)
 
+        _log.info(
+            "created account with ",
+            {
+                "starting_balance": starting_balance,
+                "slippage": slippage,
+                "derive_quantity_slippage": derive_quantity_slippage,
+                "order_minimum_quantity": order_minimum_quantity,
+                "min_target_weight": min_target_weight,
+            }
+        )
+
     # @handler(False)
-    def place_all_orders(self, s: pd.Series):
+    def place_all_orders(self, s: pd.Series, timit=True):
         start = datetime.now()
+        order_count = 0
+
         for date, item in s.items():
             if isinstance(item, Order):
                 self.place_order(item)
+                if timit: order_count += 1
             elif isinstance(item, MaximumOrder):
                 self.place_maximum_order(item)
+                if timit: order_count += 1
             elif isinstance(item, TargetWeights):
                 self.place_target_weights_oder(item)
+                if timit: order_count += len(item.asset_weights)
             elif isinstance(item, CloseOrder):
                 self.place_close_position_order(item)
+                if timit: order_count += len(self.portfolio.positions[item.position]) if isinstance(item.position, Asset) else 1
             else:
                 raise ValueError(f"Unknown order of type {type(item)}")
 
-        _log.warning(f"placed {len(s)} orders in {(datetime.now() - start).seconds} seconds")
+        if timit:
+            _log.warning(f"placed {order_count} orders in {(datetime.now() - start).seconds} seconds")
 
     # @handler(False)
     def place_order(self, order: Order):
@@ -95,8 +113,12 @@ class Account(Component):
             # print(total_balance)
 
             for asset, weight in target_weights.asset_weights.items():
-                if abs(weight) < self.min_target_weight:
-                    _log.warning(f"skip trade for {asset} because weight |{weight}| < {self.min_target_weight}")
+                aw = abs(weight)
+                if aw < self.min_target_weight:
+                    if aw > 1e-10:
+                        _log.warning(f"skip trade (close position) for {asset} because weight |{weight}| < {self.min_target_weight}")
+
+                    self.fire(CloseOrder(asset))
                     continue
 
                 pid = target_weights.position_id + "/" + asset.id
