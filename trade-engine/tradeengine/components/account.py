@@ -117,15 +117,17 @@ class Account(Component):
                 aw = abs(weight)
 
                 if aw < self.min_target_weight:
-                    if aw > 1e-10:
-                        _log.warning(f"skip trade (close position) for {asset} because weight |{weight}| < {self.min_target_weight}")
-
                     target_quantity = 0
                 else:
                     target_quantity = (total_balance * weight) / self.latest_quotes[asset].get_price(weight, 'last')
 
                 current_quantity = self.portfolio.get_quantity(asset, pid)
                 trade_quantity = target_quantity - current_quantity
+
+                if abs(current_quantity) < 1e-10 and abs(trade_quantity) < 1e-10:
+                    _log.warning(
+                        f"skip trade for {asset} because weight |{current_quantity}| <= 0 |{trade_quantity}| <= 0")
+                    continue
 
                 orders.append(
                     Order(
