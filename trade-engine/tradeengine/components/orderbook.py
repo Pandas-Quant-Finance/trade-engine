@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import datetime
 from threading import Lock
@@ -9,6 +10,8 @@ from tradeengine.common.tz_compare import timestamp_greater, timestamp_greater_e
 from tradeengine.events import Asset, Order, Quote, TradeExecution
 from tradeengine.events.data import BasketOrder, SubscribeToMarketData, CancelOrder
 from .component import Component
+
+_log = logging.getLogger(__name__)
 
 
 class OrderBook(Component):
@@ -54,8 +57,12 @@ class OrderBook(Component):
         else:
             self.fire(SubscribeToMarketData(order.asset, order.valid_from))
             with self.lock:
-                if abs(order.quantity) > self.min_quantity:
+                if abs(order.quantity) >= self.min_quantity:
                     self.orderbook[order.asset].append(order)
+                else:
+                    _log.warning(
+                        f"Did not place {order} due to minimum quantity {abs(order.quantity)} < {self.min_quantity}"
+                    )
 
         return self
 

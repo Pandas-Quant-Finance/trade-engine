@@ -20,9 +20,11 @@ class Backtester(Account):
             starting_balance: float = 100,
             slippage: float = 0,
             derive_quantity_slippage: float = 0.02,
+            order_minimum_quantity: float = 1e-4,
+            min_target_weight: float = 1e-4,
             autostart: bool = True
     ):
-        super().__init__(starting_balance, slippage, derive_quantity_slippage)
+        super().__init__(starting_balance, slippage, derive_quantity_slippage, order_minimum_quantity, min_target_weight)
         self.open_events = 0
         if autostart:
             self.start()
@@ -50,9 +52,21 @@ class PandasBarBacktester(Backtester):
             bar_converter: Callable[[pd.Series], Bar],
             starting_date: datetime | str,
             starting_balance: float = 100,
-            slippage: float = 0
+            slippage: float = 0,
+            derive_quantity_slippage: float = 0.02,
+            order_minimum_quantity: float = 1e-4,
+            min_target_weight: float = 1e-4,
+            autostart: bool = True
     ):
-        super().__init__(starting_balance, slippage)
+        super().__init__(
+            starting_balance,
+            slippage,
+            derive_quantity_slippage,
+            order_minimum_quantity,
+            min_target_weight,
+            autostart
+        )
+
         self.dataframe_provider = dataframe_provider
         self.bar_converter = bar_converter
 

@@ -37,12 +37,12 @@ class TestBackTester(TestCase):
         buy_and_hold = ((df_aapl.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
         #print(df.iloc[0, 3], df.iloc[-1, 3])
 
-        dfhist = bt.get_history()
+        dfhist = bt.get_history().dropna()
         print(dfhist.dropna())
 
         # 181.8 vs 169.45
         self.assertAlmostEqual(-0.06714, dfhist["AAPL", "pnl_%"].iloc[-1], 5)
-        self.assertAlmostEqual(-0.06714, dfhist["TOTAL", "pnl_%"].iloc[-1], 5)
+        self.assertAlmostEqual(-0.06714, dfhist.dropna()["TOTAL", "pnl_%"].iloc[-1], 5)
         self.assertLess(dfhist["TOTAL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
         self.assertLess(dfhist["AAPL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
 

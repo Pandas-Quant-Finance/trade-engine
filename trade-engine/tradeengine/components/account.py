@@ -20,15 +20,22 @@ _log = logging.getLogger(__name__)
 
 class Account(Component):
 
-    def __init__(self, starting_balance: float = 100, slippage: float = 0, derive_quantity_slippage: float = 0.02):
+    def __init__(
+            self,
+            starting_balance: float = 100,
+            slippage: float = 0,
+            derive_quantity_slippage: float = 0.02,
+            order_minimum_quantity: float = 1e-4,
+            min_target_weight: float = 1e-4,
+    ):
         super().__init__()
         self._starting_balance = starting_balance
         self.derive_quantity_slippage = derive_quantity_slippage
-        self.min_weight = 1e-3
+        self.min_target_weight = min_target_weight
 
         self.lock = Lock()
         self.portfolio = Portfolio().register(self)
-        self.orderbook = OrderBook(slippage).register(self)
+        self.orderbook = OrderBook(slippage, order_minimum_quantity).register(self)
 
         self.cash_balance = self._starting_balance
         self.cash_timeseries: Dict[datetime, float] = {None: self._starting_balance}
@@ -42,6 +49,7 @@ class Account(Component):
 
     # @handler(False)
     def place_all_orders(self, s: pd.Series):
+        start = datetime.now()
         for date, item in s.items():
             if isinstance(item, Order):
                 self.place_order(item)
@@ -53,6 +61,8 @@ class Account(Component):
                 self.place_close_position_order(item)
             else:
                 raise ValueError(f"Unknown order of type {type(item)}")
+
+        _log.warning(f"placed {len(s)} orders in {(datetime.now() - start).seconds} seconds")
 
     # @handler(False)
     def place_order(self, order: Order):
@@ -85,7 +95,8 @@ class Account(Component):
             # print(total_balance)
 
             for asset, weight in target_weights.asset_weights.items():
-                if abs(weight) < self.min_weight:
+                if abs(weight) < self.min_target_weight:
+                    _log.warning(f"skip trade for {asset} because weight |{weight}| < {self.min_target_weight}")
                     continue
 
                 pid = target_weights.position_id + "/" + asset.id
@@ -165,7 +176,7 @@ class Account(Component):
 
         with self.lock:
             cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
-            cash = cash.fillna(position_ts.index[0] - timedelta(days=1), limit=1)
+            cash.index = cash.index.fillna(position_ts.index[0] - timedelta(days=1))
 
         # join cash and cash %
         position_ts = pd.concat(
