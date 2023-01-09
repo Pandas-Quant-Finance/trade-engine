@@ -9,7 +9,7 @@ import pytest
 
 from tradeengine.components.backtester import PandasBarBacktester
 from tradeengine.components.component import Component
-from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights
+from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights, Asset
 
 # show all columns
 pd.set_option('display.max_columns', None)
@@ -32,6 +32,7 @@ class TestBackTester(TestCase):
 
         bt.place_maximum_order(MaximumOrder("AAPL", valid_from='2022-01-03'))
         bt.place_close_position_order(CloseOrder(None, valid_from='2022-01-28'))
+        bt.place_close_position_order(CloseOrder(Asset("MSFT"), valid_from='2022-01-28'))
 
         # the pnl should be very close to just the move of the stock
         buy_and_hold = ((df_aapl.loc[:"2022-02-01", "Close"].pct_change().fillna(0) + 1).cumprod() - 1)
@@ -45,6 +46,11 @@ class TestBackTester(TestCase):
         self.assertAlmostEqual(-0.06714, dfhist.dropna()["TOTAL", "pnl_%"].iloc[-1], 5)
         self.assertLess(dfhist["TOTAL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
         self.assertLess(dfhist["AAPL", "pnl_%"].iloc[-1], buy_and_hold.iloc[-1])
+
+        # no stupid closing order hanging
+        self.assertNotIn(Asset("MSFT"), bt.orderbook.orderbook.keys())
+        # no aapl order hanging
+        self.assertLessEqual(len(bt.orderbook.orderbook[Asset("AAPL")]), 0)
 
     def test_swing(self):
         Component().get_handlers().clear()
@@ -152,6 +158,28 @@ class TestBackTester(TestCase):
         # should be approximately -21 %
         self.assertAlmostEqual(dfhist["TOTAL", "pnl_%"].iloc[-1], (msft_aapl_bah + aapl_bah) / 2, 2)
 
+    def test_target_weights_closing(self):
+        Component().get_handlers().clear()
+        bt = PandasBarBacktester(
+            lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
+            lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
+            '2022-01-01',
+            100
+        )
+
+        for i, idx in enumerate(df_aapl.index):
+            weights = {"AAPL": 1.0, "MSFT": 0.0} if i % 2 == 0 else {"AAPL": 0.0, "MSFT": 1.0}
+            bt.place_target_weights_oder(TargetWeights(weights, valid_from=idx))
+
+        dfhist = bt.get_history()
+
+        # -2 because we need one leading quote to place orders
+        # and the last orders (of the last quote) never get filled without a next quote
+        self.assertEqual(len(dfhist.dropna()), len(df_aapl) - 2)
+
+        self.assertGreater(dfhist["TOTAL", "value"].min(), 70)
+        self.assertLess(dfhist["$CASH$", "balance"][1:].max(), 6)
+
     @pytest.mark.skipif(False, reason="takes a long time")
     def test_target_weights_performance(self):
         Component().get_handlers().clear()
@@ -159,7 +187,9 @@ class TestBackTester(TestCase):
             lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()[:-3]}.csv", index_col="Date", parse_dates=True)[x:],
             lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
             '2020-01-01',
-            100
+            starting_balance=100,
+            min_target_weight=1e-9,
+            order_minimum_quantity=1e-16,
         )
 
         assets = 300
@@ -168,6 +198,10 @@ class TestBackTester(TestCase):
         for idx in df_aapl.index:
             bt.place_target_weights_oder(TargetWeights(target_weights, valid_from=idx))
 
+        dfhist = bt.get_history()
         duration = datetime.datetime.now() - start
         print(duration.seconds)
+
+        self.assertGreater(dfhist["TOTAL", "value"].min(), 70)
+        self.assertLess(dfhist["$CASH$", "balance"][1:].max(), 5)
         self.assertLessEqual(duration.seconds, 31)

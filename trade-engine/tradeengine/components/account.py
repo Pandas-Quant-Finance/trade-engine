@@ -113,16 +113,17 @@ class Account(Component):
             # print(total_balance)
 
             for asset, weight in target_weights.asset_weights.items():
+                pid = target_weights.position_id + "/" + asset.id
                 aw = abs(weight)
+
                 if aw < self.min_target_weight:
                     if aw > 1e-10:
                         _log.warning(f"skip trade (close position) for {asset} because weight |{weight}| < {self.min_target_weight}")
 
-                    self.fire(CloseOrder(asset))
-                    continue
+                    target_quantity = 0
+                else:
+                    target_quantity = (total_balance * weight) / self.latest_quotes[asset].get_price(weight, 'last')
 
-                pid = target_weights.position_id + "/" + asset.id
-                target_quantity = (total_balance * weight) / self.latest_quotes[asset].get_price(weight, 'last')
                 current_quantity = self.portfolio.get_quantity(asset, pid)
                 trade_quantity = target_quantity - current_quantity
 
