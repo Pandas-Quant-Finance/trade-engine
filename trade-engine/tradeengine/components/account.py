@@ -39,7 +39,7 @@ class Account(Component):
 
         self.cash_balance = self._starting_balance
         self.cash_timeseries: Dict[datetime, float] = {None: self._starting_balance}
-        self.latest_quotes: Dict[Asset, Quote] = {}
+        self.latest_quotes: Dict[Asset, Quote] = {}    # TODO replace with LatestQuote
 
         self.register_event(TradeExecution, handler=self.on_trade_execution)
         self.register_event(TargetWeights, handler=self.place_target_weights_oder)
@@ -125,8 +125,6 @@ class Account(Component):
                 trade_quantity = target_quantity - current_quantity
 
                 if abs(current_quantity) < 1e-10 and abs(trade_quantity) < 1e-10:
-                    _log.warning(
-                        f"skip trade for {asset} because weight |{current_quantity}| <= 0 |{trade_quantity}| <= 0")
                     continue
 
                 orders.append(
@@ -199,6 +197,18 @@ class Account(Component):
         if len(position_ts) <= 0:
             return pd.DataFrame({})
 
+        position_ts = position_ts.join(
+            pd.concat(
+                [
+                    position_ts["value"].sum(axis=1).rename(("value", "TOTAL")),
+                    position_ts["unrealized_pnl"].sum(axis=1).rename(("unrealized_pnl", "TOTAL")),
+                    position_ts["realized_pnl"].sum(axis=1).rename(("realized_pnl", "TOTAL")),
+                    position_ts["pnl"].sum(axis=1).rename(("pnl", "TOTAL")),
+                ],
+                axis=1
+            )
+        )
+
         with self.lock:
             cash = pd.Series(self.cash_timeseries, name=('balance', '$CASH$'))
             cash.index = cash.index.fillna(position_ts.index[0] - timedelta(days=1))
@@ -213,9 +223,12 @@ class Account(Component):
             axis=1,
         )
 
-        # join pnl %
-        pnl_pct = (position_ts[["value"]] + position_ts[[('balance', '$CASH$')]].values) * (1 / self._starting_balance) - 1
-        position_ts = position_ts.join(pnl_pct.rename(columns=lambda x: f"pnl_%", level=0))
+        # also add the cash balance to the total
+        position_ts["balance", "TOTAL"] = position_ts["value", "TOTAL"] + position_ts['balance', '$CASH$']
+        position_ts["pnl%", "TOTAL"] = position_ts["balance", "TOTAL"] * (1 / self._starting_balance) - 1
+        position_ts["return", "TOTAL"] = position_ts["balance", "TOTAL"].pct_change()
+        position_ts["return", "TOTAL"].iloc[1] = \
+            position_ts["balance", "TOTAL"].iloc[1] / self._starting_balance - 1
 
         # return timeseries
         return position_ts.swaplevel(0, 1, axis=1)\

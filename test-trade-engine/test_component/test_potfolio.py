@@ -22,10 +22,11 @@ class TestPortfolio(TestCase):
         pf.on_quote_update(Quote("AAPL", '2020-01-03', 111))
         pf.on_quote_update(Quote("AAPL", '2020-01-04', 112))
         pf.on_quote_update(Quote("AAPL", '2020-01-03', 111))
+        ts = pf.get_timeseries()
 
         self.assertAlmostEqual(1120, pf.total_position_value)
-        self.assertAlmostEqual(112, pf.latest_quote[Asset("AAPL")][1])
+        self.assertAlmostEqual(112, pf.latest_quotes[Asset("AAPL")][1])
+        self.assertListEqual([0, -100, -110, -120], ts["AAPL", "unrealized_pnl"].tolist())
 
-        print(pf.get_timeseries())
 
 
