@@ -184,10 +184,20 @@ class Account(Component):
             self.fire(TickMarketDataClock(asset, time))
 
         with self.lock:
-            return self.portfolio.get_weights(self.cash_balance)
+            cash = self.cash_balance
+            current_positions = self.portfolio.get_positions()
+            balance = self.portfolio.total_position_value + cash
+            weights = {}
+
+            for a, positions in current_positions.items():
+                # pos = positions[pid + "/" + str(a.id)]
+                for pos in positions.values():
+                    weights[a] = pos.quantity * self.latest_quotes[a].get_price(0, 'last') / balance
+
+        return weights
 
     # @handler(False)
-    def get_history(self, time: datetime | str = datetime.now()):
+    def get_history(self, time: datetime | str = datetime.now(), remove_tzinfo: bool = False):
         # BLOCKING: we need all the latest quotes such that we can calculate the current weights
         for asset in chain(self.portfolio.assets, self.orderbook.assets):
             self.fire(TickMarketDataClock(asset, time))
@@ -230,10 +240,15 @@ class Account(Component):
         position_ts["return", "TOTAL"].iloc[1] = \
             position_ts["balance", "TOTAL"].iloc[1] / self._starting_balance - 1
 
-        # return timeseries
-        return position_ts.swaplevel(0, 1, axis=1)\
+        # swap level back, eventually remove tz info and return timeseries
+        res = position_ts.swaplevel(0, 1, axis=1)\
             .sort_index(axis=0)\
             .sort_index(axis=1, level=0, sort_remaining=False)
+
+        if remove_tzinfo:
+            res.index = res.index.tz_convert(None)
+
+        return res
 
     @property  # @handler(False)
     def total_balance(self, time = None):

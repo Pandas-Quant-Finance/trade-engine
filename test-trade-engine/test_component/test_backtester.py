@@ -158,6 +158,26 @@ class TestBackTester(TestCase):
         # should be approximately -21 %
         self.assertAlmostEqual(dfhist["TOTAL", "pnl%"].iloc[-1], (msft_aapl_bah + aapl_bah) / 2, 2)
 
+    def test_target_weights_current_weights(self):
+        Component().get_handlers().clear()
+        bt = PandasBarBacktester(
+            lambda a, x: pd.read_csv(f"{path}/../{a.id.lower()}.csv", index_col="Date", parse_dates=True)[x:],
+            lambda row: Bar(row["Open"], row["High"], row["Low"], row["Close"], ),
+            '2022-01-01',
+            100
+        )
+
+        target_weights = {"AAPL": 0.2, "MSFT": 0.8}
+        bt.place_target_weights_oder(TargetWeights(target_weights, valid_from=df_aapl.index[2]))
+        current_weights1 = bt.get_current_weights(df_aapl.index[4])
+        current_weights2 = bt.get_current_weights(df_aapl.index[5])
+
+        dist1 = np.linalg.norm(np.array(list(current_weights1.values())) - np.array(list(target_weights.values())))
+        dist2 = np.linalg.norm(np.array(list(current_weights2.values())) - np.array(list(target_weights.values())))
+
+        self.assertLessEqual(dist1, 0.024207, 6)
+        self.assertLessEqual(dist2, 0.024131, 6)
+
     def test_target_weights_closing(self):
         Component().get_handlers().clear()
         bt = PandasBarBacktester(

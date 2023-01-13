@@ -22,7 +22,6 @@ class Portfolio(Component):
         self.lock = Lock()
         self.positions: Dict[Asset, Dict[str, Position]] = defaultdict(dict)
         self.timeseries: Dict[str, Dict[datetime, dict]] = defaultdict(dict)
-        self.latest_quotes: Dict[Asset, Tuple[datetime, float]] = {}  # TODO replace with LatestQuote
         self.position_value: Dict[str, float] = defaultdict(lambda: 0)
 
         self.register_event(Quote, handler=self.on_quote_update)
@@ -34,16 +33,6 @@ class Portfolio(Component):
                 return
 
             price = quote.get_price(0, 'last')
-
-            # update latest quote
-            if quote.asset in self.latest_quotes:
-                if timestamp_greater(self.latest_quotes[quote.asset][0], quote.time):
-                    _log.warning(f"got obsolete quote from the past {quote.time} <= {self.latest_quotes[quote.asset][0]}")
-                    return
-
-                self.latest_quotes[quote.asset] = quote.time, price
-            else:
-                self.latest_quotes[quote.asset] = quote.time, price
 
             # update position timeseries
             for pid, pos in self.positions[quote.asset].items():
@@ -66,21 +55,8 @@ class Portfolio(Component):
             #  the latest position value
             #  start an entry in the timeseries
             pos_val = self.positions[trade.asset][trade.position_id].evaluate(trade.quote.get_price(0, 'last'), include_trade_delta=True)
-            self.latest_quotes[trade.asset] = trade.time, trade.price
             self.position_value[trade.position_id] = pos_val["value"]
             self.timeseries[trade.position_id][trade.time] = pos_val
-
-    def get_weights(self, cash: float = 0):
-        with self.lock:
-            balance = self.total_position_value + cash
-            weights = {}
-
-            for a, positions in self.positions.items():
-                # pos = positions[pid + "/" + str(a.id)]
-                for pos in positions.values():
-                    weights[a] = pos.quantity * self.latest_quotes[a] / balance
-
-            return weights
 
     def get_timeseries(self):
         # if we find ourselves to call this method very ofter we could think about cashing the data frame
