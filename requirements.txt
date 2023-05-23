@@ -1,3 +1,6 @@
+pykka
 tables
+pandas
 yfinance
 quantstats[stats]
+sqlalchemy>=2.0

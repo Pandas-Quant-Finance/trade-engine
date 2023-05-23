@@ -91,6 +91,17 @@ class Position(object):
         return f"{self.id}, {self.asset}, {self.quantity}, {self.cost_basis}, {self.pnl}"
 
 
+
+
+
+
+
+
+
+
+
+
+
 class TargetWeights(object):
 
     def __init__(
