@@ -1,6 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, List, Dict
+
+import pandas as pd
 
 
 @dataclass(frozen=True, eq=True)
@@ -35,13 +38,21 @@ class OrderTypes(Enum):
 
 @dataclass(frozen=True, eq=True)
 class Order:
-    id: Any
     asset: Asset
     size: float
+    valid_from: datetime
+    limit: float | None = None
+    stop_limit: float | None = None
+    valid_until: datetime = None
+    id: int | None = None
     type = None
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> 'QuantityOrder':
         raise NotImplemented
+
+    def _valid_until(self):
+        # by default the order is only valid until the end of the trading day
+        return self.valid_until or (self.valid_from + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 @dataclass(frozen=True, eq=True)
@@ -54,7 +65,7 @@ class QuantityOrder(Order):
 
     def __add__(self, other: 'QuantityOrder'):
         assert self.asset == other.asset, f"can not add orders of different assets {self.asset}, {other.asset}"
-        return QuantityOrder(self.asset, self.size + other.size)
+        return QuantityOrder(self.asset, self.size + other.size, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -63,7 +74,7 @@ class CloseOrder(Order):
     type = OrderTypes.CLOSE
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        return QuantityOrder(self.asset, -pv.positions[self.asset].qty)
+        return QuantityOrder(self.asset, -pv.positions[self.asset].qty, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -72,7 +83,8 @@ class PercentOrder(Order):
     type = OrderTypes.PERCENT
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        return QuantityOrder(self.asset, self.size * pv.cash / price)
+        # note that percent orders can only be positive and only executed with a positive balance
+        return QuantityOrder(self.asset, max(self.size, 0) * max(pv.cash, 0) / price, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -81,7 +93,12 @@ class TargetQuantityOrder(Order):
     type = OrderTypes.TARGET_QUANTITY
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        return QuantityOrder(self.asset, self.size - pv.positions[self.asset].qty)
+        if self.asset in pv.positions:
+            q = self.size - pv.positions[self.asset].qty
+        else:
+            q = self.size
+
+        return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -90,6 +107,10 @@ class TargetWeightOrder(Order):
     type = OrderTypes.TARGET_WEIGHT
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        return QuantityOrder(self.asset, (pv.value() * (self.size - pv.positions[self.asset].weight)) / price)
+        if self.asset in pv.positions:
+            w = self.size - pv.positions[self.asset].weight
+        else:
+            w = self.size
 
+        return QuantityOrder(self.asset, (pv.value() * w) / price, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 

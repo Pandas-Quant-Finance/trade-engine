@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 from time import sleep
 from unittest import TestCase
@@ -13,6 +14,7 @@ from test_utils.trading import sample_strategy
 from tradeengine.actors.memory import PandasQuoteProviderActor
 from tradeengine.actors.sql import SQLOrderbookActor
 from tradeengine.actors.sql import SQLPortfolioActor
+from tradeengine.backtest import backtest_strategy
 from tradeengine.messages import *
 from tradeengine.dto.dataflow import Asset
 
@@ -36,3 +38,16 @@ class TestActorTradeEngine(TestCase):
             # shutdown threadpool
             pykka.ActorRegistry.stop_all()
 
+    def test_foo(self):
+        strategy_id: str = str(uuid.uuid4())
+        portfolio_actor = SQLPortfolioActor.start(get_sqlite_engine(False), strategy_id=strategy_id)
+        orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id)
+
+        backtest_strategy(
+            orderbook_actor,
+            portfolio_actor,
+            FRAMES,
+            sample_strategy(),
+        )
+
+        # print(orderbook_actor.proxy().get_full_orderbook())

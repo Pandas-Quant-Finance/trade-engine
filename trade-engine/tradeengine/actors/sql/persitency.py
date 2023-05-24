@@ -9,7 +9,10 @@ from tradeengine.dto.dataflow import Asset, OrderTypes
 
 # objects for SQL Alchemy
 class OrderBookBase(DeclarativeBase):
-    pass
+
+    def __repr__(self):
+        params = ', '.join(f'{k}={v}' for k, v in self.__dict__.items() if not k.startswith("_"))
+        return f'{self.__class__.__name__}({params})'
 
 
 class OrderBook(OrderBookBase):
@@ -55,7 +58,10 @@ class OrderBookHistory(OrderBookBase):
 
 
 class PortfolioBase(DeclarativeBase):
-    pass
+
+    def __repr__(self):
+        params = ', '.join(f'{k}={v}' for k, v in self.__dict__.items() if not k.startswith("_"))
+        return f'{self.__class__.__name__}({params})'
 
 
 class PortfolioTrade(PortfolioBase):

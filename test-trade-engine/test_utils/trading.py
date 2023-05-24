@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 
 from test_utils.data import FRAMES
-from tradeengine.dto.dataflow import Asset, PercentOrder
+from tradeengine.dto.dataflow import Asset, TargetWeightOrder
 
 
-def sample_strategy() -> Dict[Asset, pd.DataFrame]:
+def sample_strategy(signal_only=True) -> Dict[Asset, pd.Series | pd.DataFrame]:
     result = {}
     for a, f in FRAMES.items():
         df = f[["Close"]]
@@ -16,8 +16,9 @@ def sample_strategy() -> Dict[Asset, pd.DataFrame]:
         df["signal"] = df["ma20"] - df["ma90"]
         df["signal"] = df["signal"].rolling(2).apply(lambda x: (np.sign(x[0]) != np.sign(x[1])) * np.sign(x[1]))
 
-        df["order"] = df["signal"].apply(lambda x: PercentOrder(0, ))
-        result[a] = f
+        df["order"] = df["signal"].apply(lambda x: {TargetWeightOrder: dict(size=0.49 if x > 0 else -0.49)} if x != 0 else None)
+
+        result[a] = df["order"] if signal_only else df
 
     return result
 

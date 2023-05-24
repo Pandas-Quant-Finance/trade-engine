@@ -1,101 +1,40 @@
 from datetime import datetime, timedelta
+from functools import partial
 from unittest import TestCase
 
 import numpy as np
 from sqlalchemy import create_engine
 
+from tradeengine.actors.orderbook_actor import order_sorter
 from tradeengine.actors.sql.orderbook import SQLOrderbookActor
 from tradeengine.actors.sql.portfolio import SQLPortfolioActor
-from tradeengine.dto.dataflow import Asset, OrderTypes
+from tradeengine.dto.dataflow import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder, PositionValue, \
+    PortfolioValue
 
 
 class TestOrderBookActors(TestCase):
 
+    def test_orderbook_sort(self):
+        orders = [PercentOrder(None, 0.12, None, id=3), QuantityOrder(None, 10, None, id=2), QuantityOrder(None, -10, None, id=1), CloseOrder(None, None, None, id=0)]
+        orders_sorted = list(sorted([(o, 1) for o in orders], key=partial(order_sorter, pv=PortfolioValue(100, {None: PositionValue(None, 1, 0, 0)}))))
+        print(orders_sorted)
+        self.assertListEqual([o.id for o, _ in orders_sorted], list(range(4)))
+
     def test_order_book(self):
         ob = SQLOrderbookActor(None, create_engine('sqlite://', echo=True))
-        ob.place_order(OrderTypes.QUANTITY, Asset("AAPL"), 12, datetime.now())
+        ob.place_order(QuantityOrder(Asset("AAPL"), 12, datetime.now()))
 
-        print(ob.get_full_orderbook())
+        orders = ob.get_full_orderbook()
+        print(orders)
+        self.assertEquals(len(orders), 1)
 
-        print(ob._get_orders_for_execution(Asset("AAPL"), datetime.now(), 2, 2, 2, 2, 2, 2))
+        executable_orders = ob._get_orders_for_execution(Asset("AAPL"), datetime.now(), 2, 2, 2, 2, 2, 2)
+        print(executable_orders)
+        self.assertEquals(len(executable_orders), 1)
 
         ob._evict_orders(Asset("AAPL"), datetime.now() + timedelta(days=1))
-        print(ob.get_full_orderbook())
+        orders_after_eviction = ob.get_full_orderbook()
+        print(orders_after_eviction)
+        self.assertEquals(len(orders_after_eviction), 0)
 
         ob.on_stop()
-
-
-
-    # TODO google how to run the same test for various sub-classes
-    def test_something(self):
-        port = SQLPortfolioActor(create_engine('sqlite://', echo=True), funding=425)
-
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 20, 0)
-        port.add_new_position(Asset("MSFT"), datetime.now(), 5, 30, 0)
-        port.add_new_position(Asset("TWTR"), datetime.now(), 15, 5, 0)
-        print({p.asset: p.weight for p in port.get_portfolio_value().positions.values()})
-
-        port.update_position_value(Asset("AAPL"), datetime.now(), 22, 22)
-        port.update_position_value(Asset("MSFT"), datetime.now(), 28, 28)
-        port.update_position_value(Asset("TWTR"), datetime.now(), 5, 5)
-        weights = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights)
-
-        target_weights = [0.6, 0.2, 0.2]
-        qty = ((0.6 - weights[Asset("AAPL")]) * port.get_portfolio_value().value()) / 22.0
-
-        port.add_new_position(Asset("AAPL"), datetime.now(), qty, 22, 0)
-        weights2 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights2)
-
-        qty = ((0.2 - weights[Asset("MSFT")]) * port.get_portfolio_value().value()) / 28.0
-
-        port.add_new_position(Asset("MSFT"), datetime.now(), qty, 28, 0)
-        weights3 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights3)
-
-        qty = ((0.2 - weights[Asset("TWTR")]) * port.get_portfolio_value().value()) / 5.0
-
-        port.add_new_position(Asset("TWTR"), datetime.now(), qty, 5.0, 0)
-        weights4 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights4)
-
-
-    def test_something2(self):
-        port = SQLPortfolioActor(create_engine('sqlite://', echo=True), funding=425)
-
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 20, 0)
-        port.add_new_position(Asset("MSFT"), datetime.now(), 5, 30, 0)
-        port.add_new_position(Asset("TWTR"), datetime.now(), 15, 5, 0)
-        print({p.asset: p.weight for p in port.get_portfolio_value().positions.values()})
-
-        port.update_position_value(Asset("AAPL"), datetime.now(), 22, 22)
-        port.update_position_value(Asset("MSFT"), datetime.now(), 28, 28)
-        port.update_position_value(Asset("TWTR"), datetime.now(), 5, 5)
-        weights = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights)
-
-        target_weights = [0.6, 0.2, 0.2]
-        qty = ((0.6 - weights[Asset("AAPL")]) * port.get_portfolio_value().value()) / 22.0
-
-        port.add_new_position(Asset("AAPL"), datetime.now(), qty, 22.2, 0)
-        weights2 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights2)
-
-        qty = ((0.2 - weights[Asset("MSFT")]) * port.get_portfolio_value().value()) / 28.0
-
-        port.add_new_position(Asset("MSFT"), datetime.now(), qty, 27.98, 0)
-        weights3 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights3)
-
-        qty = ((0.2 - weights[Asset("TWTR")]) * port.get_portfolio_value().value()) / 5.0
-
-        port.add_new_position(Asset("TWTR"), datetime.now(), qty, 5.3, 0)
-        weights4 = {p.asset: p.weight for p in port.get_portfolio_value().positions.values()}
-        print(weights4)
-
-"""
-[(Asset(symbol='$$$'), 0.0), (Asset(symbol='AAPL'), 0.47058823529411764), (Asset(symbol='MSFT'), 0.35294117647058826), (Asset(symbol='TWTR'), 0.17647058823529413)]
-[(Asset(symbol='$$$'), 0.0), (Asset(symbol='AAPL'), 0.5057471264367817), (Asset(symbol='MSFT'), 0.3218390804597701), (Asset(symbol='TWTR'), 0.1724137931034483)]
-
-"""

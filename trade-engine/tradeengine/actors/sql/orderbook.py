@@ -43,24 +43,20 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         except Exception as e:
             LOG.error(e)
 
-    def place_order(
-            self,
-            order_type: OrderTypes,
-            asset: Asset,
-            qty: float | None,
-            valid_from: datetime,
-            limit: float | None = None,
-            stop_limit: float | None = None,
-            valid_until: datetime = None,
-    ):
-        if valid_until is None:
-            # by default the order is only valid until the end of the trading day
-            valid_until = valid_from.replace(hour=23, minute=59, second=59, microsecond=999)
-
+    def place_order(self, order: Order):
         # simply store the order in the datastructure i.e. sqlite
         with Session(self.engine) as session:
             session.add(
-                OrderBook(strategy_id=self.strategy_id, order_type=order_type, asset=asset, limit=limit, stop_limit=stop_limit, valid_from=valid_from, valid_until=valid_until, qty=qty)
+                OrderBook(
+                    strategy_id=self.strategy_id,
+                    order_type=order.type,
+                    asset=order.asset,
+                    limit=order.limit,
+                    stop_limit=order.stop_limit,
+                    valid_from=order.valid_from,
+                    valid_until=order._valid_until(),
+                    qty=order.size
+                )
             )
             session.commit()
 
@@ -88,15 +84,15 @@ class SQLOrderbookActor(AbstractOrderbookActor):
 
             match o.order_type:
                 case OrderTypes.CLOSE:
-                    return CloseOrder(o.id, o.asset, o.qty), price
+                    return CloseOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
                 case OrderTypes.QUANTITY:
-                    return QuantityOrder(o.id, o.asset, o.qty), price
+                    return QuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
                 case OrderTypes.TARGET_QUANTITY:
-                    return TargetQuantityOrder(o.id, o.asset, o.qty), price
+                    return TargetQuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
                 case OrderTypes.PERCENT:
-                    return PercentOrder(o.id, o.asset, o.qty), price
+                    return PercentOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
                 case OrderTypes.TARGET_WEIGHT:
-                    return TargetWeightOrder(o.id, o.asset, o.qty), price
+                    return TargetWeightOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
 
         with Session(self.engine) as session:
             sql = _get_executable_orders_from_orderbook_sql(self.strategy_id, asset, as_of, high, low)

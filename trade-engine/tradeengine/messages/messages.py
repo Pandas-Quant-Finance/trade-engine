@@ -1,17 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from tradeengine._obsolete.events import Asset
-from tradeengine.dto.dataflow import Order
+from tradeengine.dto.dataflow import Order, Asset
 
 
 @dataclass(frozen=True, eq=True)
 class Message:
     pass
-
-#@dataclass(frozen=True, eq=True)
-#class NewMarketDataProviderMessage(Message):
-#    provider: pykka.ActorRef
 
 
 @dataclass(frozen=True, eq=True)
@@ -67,41 +62,6 @@ class NewBarMarketData(NewMarketDataMessage):
 @dataclass(frozen=True, eq=True)
 class NewOrderMessage(Message):
     order: Order
-
-
-@dataclass(frozen=True, eq=True)
-class OrderMessage(Message):
-    asset: Asset
-    limit: float | None
-    stop_limit: float | None
-    valid_from: datetime
-    valid_until: datetime
-
-
-@dataclass(frozen=True, eq=True)
-class CloseOrderMessage(OrderMessage):
-    pass
-
-
-@dataclass(frozen=True, eq=True)
-class QuantityOrderMessage(OrderMessage):
-    qty: float
-
-
-@dataclass(frozen=True, eq=True)
-class TargetQuantityOrderMessage(OrderMessage):
-    qty: float
-
-
-@dataclass(frozen=True, eq=True)
-class PercentOrderMessage(OrderMessage):
-    percent: float
-
-
-@dataclass(frozen=True, eq=True)
-class TargetWeightOrderMessage(OrderMessage):
-    weight: float
-
 
 
 

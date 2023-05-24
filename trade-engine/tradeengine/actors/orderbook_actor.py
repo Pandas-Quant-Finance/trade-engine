@@ -1,14 +1,15 @@
 from abc import abstractmethod
 from datetime import datetime
+from functools import partial
 from typing import Any, List, Tuple
 
 import pykka
 
 from tradeengine.dto.dataflow import OrderTypes, PortfolioValue, Order, QuantityOrder, \
     Asset
-from tradeengine.messages.messages import QuantityOrderMessage, PercentOrderMessage, \
-    NewBidAskMarketData, NewBarMarketData, CloseOrderMessage, TargetQuantityOrderMessage, TargetWeightOrderMessage, \
-    PortfolioValueMessage, NewPositionMessage
+from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData, PortfolioValueMessage, \
+    NewPositionMessage, NewOrderMessage
+
 
 RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT)
 
@@ -37,16 +38,8 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
     def on_receive(self, message: Any) -> Any:
         match message:
             # if message is PlaceOrder, we store the order in the orderbook
-            case QuantityOrderMessage(asset, limit, stop_limit, valid_from, valid_until, qty):
-                return self.place_order(OrderTypes.QUANTITY, asset, qty, valid_from, limit, stop_limit, valid_until)
-            case TargetQuantityOrderMessage(asset, limit, stop_limit, valid_from, valid_until, qty):
-                return self.place_order(OrderTypes.TARGET_QUANTITY, asset, qty, valid_from, limit, stop_limit, valid_until)
-            case PercentOrderMessage(asset, limit, stop_limit, valid_from, valid_until, percent):
-                return self.place_order(OrderTypes.PERCENT, asset, percent, valid_from, limit, stop_limit, valid_until)
-            case TargetWeightOrderMessage(asset, limit, stop_limit, valid_from, valid_until, weight):
-                return self.place_order(OrderTypes.TARGET_WEIGHT, asset, weight, valid_from, limit, stop_limit, valid_until)
-            case CloseOrderMessage(asset, limit, stop_limit, valid_from, valid_until):
-                return self.place_order(OrderTypes.CLOSE, asset, None, valid_from, limit, stop_limit, valid_until)
+            case NewOrderMessage(order):
+                return self.place_order(order)
 
             # when a new quote messages comes in whe need to check if an order is executed or can be evicted.
             # if an order can be executed and the quantity is not clear (weight/percentage/amount orders)
@@ -59,37 +52,35 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
                 raise ValueError(f"Unknown Message {message}")
 
     def new_market_data(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask):
-        # evict orders and return if nothing to execute
+        # evict orders
         self._evict_orders(asset, as_of)
 
-        # check if we have an order and if an order would be executed (or could be evicted)
-        execute = self._get_orders_for_execution(asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask)
-        if len(execute) <= 0: return
+        # check if we have an order and if an order would be executed and return if nothing to execute
+        executable_orders = self._get_orders_for_execution(asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask)
+        if len(executable_orders) <= 0: return
 
+        need_portfolio_value = any(o.type for o, _ in executable_orders if o.type in [RELATIVE_ORDER_TYPES])
+        pv: PortfolioValue = self.portfolio_actor.ask(PortfolioValueMessage()) if need_portfolio_value else None
+
+        # sort orders by sell orders first:
+        for executable_order in sorted(executable_orders, key=partial(order_sorter, pv=pv)):
+            self._execute_executable_order(*executable_order, asset, as_of)
+
+    def _execute_executable_order(self, order: Order, expected_price: float, asset: Asset, as_of: datetime):
         # check if we have orders which need the portfolio value to be executable. And sort such that we sell first
         # before we increase positions
-        need_portfolio_value = any([True for o, _ in execute if o.type in RELATIVE_ORDER_TYPES])
+        need_portfolio_value = order.type in [RELATIVE_ORDER_TYPES]
         pv: PortfolioValue = self.portfolio_actor.ask(PortfolioValueMessage()) if need_portfolio_value else None
-        execute_order = sum([order.to_quantity(pv, price) for order, price in execute])
-        avg_price = sum([order.size * price for order, price in execute]) / sum([order.size for order, _ in execute])
+        execute_order = order.to_quantity(pv, expected_price)
 
         # we only have one net order for one asset from one asset's price update which we execute now.
         # and then tell the portfolio actor about it
-        quantity, price, fee = self._execute_order(execute_order, avg_price, pv)
+        quantity, price, fee = self._execute_order(execute_order, expected_price, pv)
         if quantity is not None:
             self.portfolio_actor.tell(NewPositionMessage(asset, as_of, quantity, price, fee))
 
     @abstractmethod
-    def place_order(
-            self,
-            order_type: OrderTypes,
-            asset: Asset,
-            qty: float | None,
-            valid_from: datetime,
-            limit: float | None = None,
-            stop_limit: float | None = None,
-            valid_until: datetime = None,
-    ):
+    def place_order(self, order: Order):
         # simply store the order in a datastructure
         raise NotImplemented
 
@@ -110,3 +101,37 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         # delete orders where valid_until < as_of from the orderbook and put it to the orderbook_history
         raise NotImplemented
 
+
+def order_sorter(order_with_expected_price: Tuple[Order, float], pv: PortfolioValue | None) -> int:
+    order, expected_price = order_with_expected_price
+
+    """
+    we need the following order of orders
+        CLOSE,
+        QUANTITY < 0
+        TARGET_QUANTITY - p.qty < 0
+        TARGET_WEIGHT - pv.weight < 0
+        QUANTITY >= 0
+        TARGET_QUANTITY - p.qty >= 0
+        TARGET_WEIGHT - pv.weight >= 0
+        PERCENT
+    """
+    match (order.type, order.to_quantity(pv, expected_price).size):
+        case (OrderTypes.CLOSE, _):
+            return 0
+        case (OrderTypes.QUANTITY, qty) if qty < 0:
+            return 1
+        case (OrderTypes.TARGET_QUANTITY, qty) if qty < 0:
+            return 2
+        case (OrderTypes.TARGET_WEIGHT, qty) if qty < 0:
+            return 3
+        case (OrderTypes.QUANTITY, _):
+            return 4
+        case (OrderTypes.TARGET_QUANTITY, _):
+            return 4
+        case (OrderTypes.TARGET_WEIGHT, _):
+            return 4
+        case (OrderTypes.PERCENT, _):
+            return 5
+        case _:
+            return 999
