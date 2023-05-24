@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 import pytz
 
-from tradeengine.common.dataframe_iterator import DataFrameIterator
-from tradeengine.common.nullsafe import coalesce
-from tradeengine.common.tz_compare import timestamp_greater
+from tradeengine._obsolete.common import DataFrameIterator
+from tradeengine._obsolete.common import coalesce
+from tradeengine._obsolete.common import timestamp_greater
 
 
 class TestCommonUtils(TestCase):

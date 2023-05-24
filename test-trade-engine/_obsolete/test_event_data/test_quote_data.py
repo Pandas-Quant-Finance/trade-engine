@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest import TestCase
 
-from tradeengine.events import Quote, BidAsk, Bar
+from tradeengine._obsolete.events import Quote, BidAsk, Bar
 
 
 class TestQuoteData(TestCase):

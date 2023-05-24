@@ -1,15 +1,10 @@
 from __future__ import annotations
 import logging
-from collections import defaultdict
-from copy import deepcopy
 from datetime import datetime
 from threading import Lock
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
-import pandas as pd
-
-from tradeengine.events import Asset, Position, Quote, TradeExecution
-from .component import Component
+from tradeengine._obsolete.events import Asset, Quote
 from ..common.tz_compare import timestamp_greater
 from .component import Component
 

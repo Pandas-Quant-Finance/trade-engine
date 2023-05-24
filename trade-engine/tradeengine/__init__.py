@@ -1,1 +1,1 @@
-from .components import *
+from tradeengine._obsolete.components import *

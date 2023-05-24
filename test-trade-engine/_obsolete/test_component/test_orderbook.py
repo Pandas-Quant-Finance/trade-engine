@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from tradeengine.components.orderbook import OrderBook
-from tradeengine.events import Order, Quote, Asset, TradeExecution
+from tradeengine._obsolete.components import OrderBook
+from tradeengine._obsolete.events import Order, Quote, Asset, TradeExecution
 
 
 class TestOrderBook(TestCase):

@@ -4,13 +4,12 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from threading import Lock
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import pandas as pd
 
-from tradeengine.events import Asset, Position, Quote, TradeExecution
+from tradeengine._obsolete.events import Asset, Position, Quote, TradeExecution
 from .component import Component
-from ..common.tz_compare import timestamp_greater
 
 _log = logging.getLogger(__name__)
 

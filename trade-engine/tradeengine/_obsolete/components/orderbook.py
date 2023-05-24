@@ -6,9 +6,9 @@ from datetime import datetime
 from threading import Lock
 from typing import Dict, List
 
-from tradeengine.common.tz_compare import timestamp_greater, timestamp_greater_equal
-from tradeengine.events import Asset, Order, Quote, TradeExecution
-from tradeengine.events.data import BasketOrder, SubscribeToMarketData, CancelOrder
+from tradeengine._obsolete.common.tz_compare import timestamp_greater, timestamp_greater_equal
+from tradeengine._obsolete.events import Asset, Order, Quote, TradeExecution
+from tradeengine._obsolete.events.data import BasketOrder, SubscribeToMarketData, CancelOrder
 from .component import Component
 
 _log = logging.getLogger(__name__)

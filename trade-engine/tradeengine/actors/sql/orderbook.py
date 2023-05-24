@@ -33,8 +33,8 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         self.relative_order_min_impact = relative_order_min_impact
         self.slippage = slippage
 
+        LOG.info("generate OrderBook database objects")
         OrderBookBase.metadata.create_all(bind=alchemy_engine)
-        # self.session = Session(self.engine, expire_on_commit=False)
 
     def on_stop(self) -> None:
         try:

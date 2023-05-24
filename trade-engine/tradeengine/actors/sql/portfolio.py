@@ -35,6 +35,7 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         self.positions: Dict[Asset, PortfolioPosition] = {}
         self.funding_date = funding_date
 
+        LOG.info("generate Portfolio database objects")
         PortfolioBase.metadata.create_all(bind=alchemy_engine)
         session = self.session = Session(self.alchemy_engine, expire_on_commit=False)
 

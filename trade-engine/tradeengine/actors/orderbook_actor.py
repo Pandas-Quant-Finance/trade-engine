@@ -1,33 +1,31 @@
 from abc import abstractmethod
 from datetime import datetime
-from enum import Enum
 from typing import Any, List, Tuple
 
 import pykka
 
-from tradeengine.dto.dataflow import PositionValue, OrderTypes, PortfolioValue, Order, CloseOrder, QuantityOrder, \
-    TargetQuantityOrder, PercentOrder, TargetWeightOrder, Asset
+from tradeengine.dto.dataflow import OrderTypes, PortfolioValue, Order, QuantityOrder, \
+    Asset
 from tradeengine.messages.messages import QuantityOrderMessage, PercentOrderMessage, \
     NewBidAskMarketData, NewBarMarketData, CloseOrderMessage, TargetQuantityOrderMessage, TargetWeightOrderMessage, \
     PortfolioValueMessage, NewPositionMessage
 
 RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT)
 
-"""
-The OrderbookActor is responsible to keep track of orders the client places. 
-It needs a Portfolio Actor to tell in case an order is executed.
-
-The Actor accepts the following messages:
- * a message to place an order in percentages (weights) or quantity (nr of shares)
- * a message which tells the orderbook about new market quote updates
-
-The actor sends the following messages:
- * asks the Portfolio Actor about the current total portfolio value
- * tells the Portfolio Actor about new executed trades   
-"""
-
 
 class AbstractOrderbookActor(pykka.ThreadingActor):
+    """
+    The OrderbookActor is responsible to keep track of orders the client places.
+    It needs a Portfolio Actor to tell in case an order is executed.
+
+    The Actor accepts the following messages:
+     * a message to place an order in percentages (weights) or quantity (nr of shares)
+     * a message which tells the orderbook about new market quote updates
+
+    The actor sends the following messages:
+     * asks the Portfolio Actor about the current total portfolio value
+     * tells the Portfolio Actor about new executed trades
+    """
 
     def __init__(
             self,

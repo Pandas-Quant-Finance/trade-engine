@@ -1,14 +1,12 @@
 import logging
-import unittest
 from contextlib import closing
 from unittest import TestCase, skip
 
 import pandas as pd
 import yfinance
 
-from tradeengine.components import Account, YfBacktester
-from tradeengine.components.yfbacktest import PandasBarBacktester
-from tradeengine.events import *
+from tradeengine._obsolete.components.yfbacktest import PandasBarBacktester
+from tradeengine._obsolete.events import *
 
 
 

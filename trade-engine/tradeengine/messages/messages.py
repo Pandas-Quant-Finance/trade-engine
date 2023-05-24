@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-import pykka
-
-from tradeengine.events import Asset
+from tradeengine._obsolete.events import Asset
+from tradeengine.dto.dataflow import Order
 
 
 @dataclass(frozen=True, eq=True)
@@ -44,6 +43,7 @@ class NewPositionMessage(Message):
 class ReplayAllMarketDataMessage(Message):
     pass
 
+
 @dataclass(frozen=True, eq=True)
 class NewMarketDataMessage(Message):
     asset: Asset
@@ -62,6 +62,11 @@ class NewBarMarketData(NewMarketDataMessage):
     high: float
     low: float
     close: float
+
+
+@dataclass(frozen=True, eq=True)
+class NewOrderMessage(Message):
+    order: Order
 
 
 @dataclass(frozen=True, eq=True)

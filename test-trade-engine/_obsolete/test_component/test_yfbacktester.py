@@ -2,9 +2,9 @@ from unittest import TestCase
 
 import pandas as pd
 
-from tradeengine.components.component import Component
-from tradeengine.components.yfbacktest import YfBacktester
-from tradeengine.events import MaximumOrder, CloseOrder
+from tradeengine._obsolete.components import Component
+from tradeengine._obsolete.components.yfbacktest import YfBacktester
+from tradeengine._obsolete.events import MaximumOrder, CloseOrder
 
 # show all columns
 pd.set_option('display.max_columns', None)

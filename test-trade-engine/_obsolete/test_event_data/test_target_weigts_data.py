@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import pytest
 
-from tradeengine.events import TargetWeights, Asset
+from tradeengine._obsolete.events import TargetWeights, Asset
 
 
 class TestTargetWeightsData(TestCase):

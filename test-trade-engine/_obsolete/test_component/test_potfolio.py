@@ -3,9 +3,8 @@ from unittest import TestCase
 
 import pandas as pd
 
-from tradeengine.components.orderbook import OrderBook
-from tradeengine.components.portfolio import Portfolio
-from tradeengine.events import Order, Quote, Asset, TradeExecution
+from tradeengine._obsolete.components.portfolio import Portfolio
+from tradeengine._obsolete.events import Quote, Asset, TradeExecution
 
 # show all columns
 pd.set_option('display.max_columns', None)

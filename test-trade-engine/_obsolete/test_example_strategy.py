@@ -4,8 +4,8 @@ import numpy as np
 import yfinance as yf
 
 #from tradeengine import YFinanceBacktestingTradeEngine
-from tradeengine.components import YfBacktester
-from tradeengine.events import Order, Asset
+from tradeengine._obsolete.components import YfBacktester
+from tradeengine._obsolete.events import Order, Asset
 
 
 class TestExampleStrategy(TestCase):

@@ -1,33 +1,31 @@
 from __future__ import annotations
 
-from datetime import datetime
-
-import pandas as pd
-from sqlalchemy import Engine
 from abc import abstractmethod
+from datetime import datetime
 from typing import Any, Tuple
 
+import pandas as pd
 import pykka
 
-from tradeengine.dto.dataflow import PositionValue, PortfolioValue
+from tradeengine.dto.dataflow import PortfolioValue
 from tradeengine.messages.messages import PortfolioValueMessage, \
     NewBidAskMarketData, NewBarMarketData, NewPositionMessage, PortfolioPerformanceMessage, PortfolioTradesMessage
 
-"""
-The Portfolio Actor is responsible to keep track of the entire Portfolio of a Client/Strategy. 
-It keeps track of the current positions and evaluations as well as it builds up a complete history
-of positions entering and leaving the portfolio.
-
-The Portfolio Action accepts the following messages:
- * a message which tells the portfolio about new market quote updates to re-evaluate its position value
- * a message of actor asking about the current portfolio value
- * messages about portfolio statistics
- 
-The actor sends the following messages:
- * 
- 
-"""
 class AbstractPortfolioActor(pykka.ThreadingActor):
+    """
+    The Portfolio Actor is responsible to keep track of the entire Portfolio of a Client/Strategy.
+    It keeps track of the current positions and evaluations as well as it builds up a complete history
+    of positions entering and leaving the portfolio.
+
+    The Portfolio Action accepts the following messages:
+     * a message which tells the portfolio about new market quote updates to re-evaluate its position value
+     * a message of actor asking about the current portfolio value
+     * messages about portfolio statistics
+
+    The actor sends the following messages:
+     *
+
+    """
 
     def __init__(
             self,

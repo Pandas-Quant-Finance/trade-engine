@@ -6,8 +6,8 @@ import pandas as pd
 from tradeengine import YFinanceBacktestingTradeEngine
 from datetime import datetime
 
-from tradeengine.components import YfBacktester
-from tradeengine.events import *
+from tradeengine._obsolete.components import YfBacktester
+from tradeengine._obsolete.events import *
 
 
 class TestYFinanceBacktestingTradeEngine(TestCase):

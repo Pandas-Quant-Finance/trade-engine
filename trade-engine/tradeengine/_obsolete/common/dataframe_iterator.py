@@ -2,7 +2,7 @@ from typing import Generator
 
 import pandas as pd
 
-from tradeengine.common.tz_compare import timestamp_less_equal
+from tradeengine._obsolete.common.tz_compare import timestamp_less_equal
 
 
 class DataFrameIterator(object):

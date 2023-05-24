@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tradeengine.events import Order
+from tradeengine._obsolete.events import Order
 
 
 class TestOrderData(TestCase):

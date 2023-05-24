@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import pandas as pd
 
-from tradeengine.events import *
+from tradeengine._obsolete.events import *
 
 # show all columns
 pd.set_option('display.max_columns', None)

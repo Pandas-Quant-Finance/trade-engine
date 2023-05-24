@@ -7,9 +7,9 @@ import os
 
 import pytest
 
-from tradeengine.components.backtester import PandasBarBacktester
-from tradeengine.components.component import Component
-from tradeengine.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights, Asset
+from tradeengine._obsolete.components import PandasBarBacktester
+from tradeengine._obsolete.components import Component
+from tradeengine._obsolete.events import Bar, MaximumOrder, CloseOrder, Order, TargetWeights, Asset
 
 # show all columns
 pd.set_option('display.max_columns', None)
