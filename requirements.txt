@@ -4,3 +4,4 @@ pandas
 yfinance
 quantstats[stats]
 sqlalchemy>=2.0
+ddt[dev]

@@ -14,6 +14,7 @@ from tradeengine.dto.dataflow import Asset
 
 # TODO google how to run the same test for various sub-classes
 # TODO eventually implement a memory version of the sql portfolio actor (should be copy paste + abstract data access)
+#@ddt
 class TestPortfolioActor(TestCase):
 
     def _test_add_position_dev(self):
@@ -28,6 +29,9 @@ class TestPortfolioActor(TestCase):
         port.add_new_position(Asset("AAPL"), datetime.now(), -5, 11.2, 0)
         print(port.get_portfolio_value(datetime.now()))
 
+    # TODO use ddt and data to test every implementaion of the portfolio actor
+    #@data(SQLPortfolioActor(create_engine('sqlite://', echo=True)),)
+    #def test_add_position(self, port):
     def test_add_position(self):
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True))
 

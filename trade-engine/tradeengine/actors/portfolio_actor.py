@@ -10,7 +10,7 @@ from typing import Any, Tuple
 import pykka
 
 from tradeengine.dto.dataflow import PositionValue, PortfolioValue
-from tradeengine.messages.messages import PortfolioValueMessage, QuoteAskMarketData, \
+from tradeengine.messages.messages import PortfolioValueMessage, \
     NewBidAskMarketData, NewBarMarketData, NewPositionMessage, PortfolioPerformanceMessage, PortfolioTradesMessage
 
 """
@@ -19,13 +19,13 @@ It keeps track of the current positions and evaluations as well as it builds up 
 of positions entering and leaving the portfolio.
 
 The Portfolio Action accepts the following messages:
- * a message which tells the portfolio about a market data actor (ref) which can be asked about quote updates
  * a message which tells the portfolio about new market quote updates to re-evaluate its position value
  * a message of actor asking about the current portfolio value
- * a message of actor asking about a current position value
+ * messages about portfolio statistics
  
 The actor sends the following messages:
- * asks the Quote provider Actor about a current quote    
+ * 
+ 
 """
 class AbstractPortfolioActor(pykka.ThreadingActor):
 
@@ -51,8 +51,6 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
 
             case NewPositionMessage(asset, as_of, quantity, price, fee):
                 return self.add_new_position(asset, as_of, quantity, price, fee)
-            case QuoteAskMarketData(asset, as_of, quote):
-                return self.update_position_value(asset, as_of, quote, quote)
             case NewBidAskMarketData(asset, as_of, bid, ask):
                 return self.update_position_value(asset, as_of, bid, ask)
             case NewBarMarketData(asset, as_of, open, high, low, close):
@@ -80,10 +78,6 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
         raise NotImplemented
 
     @abstractmethod
-    def get_trades(self, as_of: datetime | None = None) -> pd.DataFrame:
-        raise NotImplemented
-
-    @abstractmethod
     def get_portfolio_value(self, as_of: datetime | None = None) -> PortfolioValue:
         raise NotImplemented
 
@@ -95,3 +89,6 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
     def update_position_value(self, asset, as_of, bid, ask):
         raise NotImplemented
 
+    @abstractmethod      # TODO derelease this function ..
+    def get_trades(self, as_of: datetime | None = None) -> pd.DataFrame:
+        raise NotImplemented

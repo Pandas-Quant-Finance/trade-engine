@@ -1,22 +1,57 @@
 from datetime import datetime
-from enum import Enum
 from typing import Tuple
 
-from sqlalchemy import ForeignKey, String, DateTime, Integer
+from sqlalchemy import ForeignKey, String, DateTime, Integer, Enum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, composite
 
-from tradeengine.dto.dataflow import Asset
+from tradeengine.dto.dataflow import Asset, OrderTypes
 
 
 # objects for SQL Alchemy
 class OrderBookBase(DeclarativeBase):
     pass
 
+
 class OrderBook(OrderBookBase):
     __tablename__ = 'orderbook'
-    asset_id: Mapped[str] = mapped_column(primary_key=True)
-    order_type: Mapped[Enum]
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    strategy_id: Mapped[str] = mapped_column(index=True)
+    order_type: Mapped[OrderTypes] = mapped_column(Enum(OrderTypes, length=50), index=True)
+    asset: Mapped[Asset] = composite(mapped_column(String(255), index=True))
+    limit:  Mapped[float] = mapped_column(nullable=True)
+    stop_limit: Mapped[float] = mapped_column(nullable=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
+    qty: Mapped[float] = mapped_column(nullable=True)
 
+    def to_history(self, status, filled):
+        return OrderBookHistory(
+            strategy_id=self.strategy_id,
+            order_type=self.order_type,
+            asset=self.asset,
+            limit=self.limit,
+            stop_limit=self.stop_limit,
+            valid_from=self.valid_from,
+            valid_until=self.valid_until,
+            qty=self.qty,
+            status=status,
+            filled=filled
+        )
+
+
+class OrderBookHistory(OrderBookBase):
+    __tablename__ = 'orderbook_history'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    strategy_id: Mapped[str] = mapped_column(index=True)
+    order_type: Mapped[OrderTypes] = mapped_column(Enum(OrderTypes, length=50), index=True)
+    asset: Mapped[Asset] = composite(mapped_column(String(255), index=True))
+    limit: Mapped[float] = mapped_column(nullable=True)
+    stop_limit: Mapped[float] = mapped_column(nullable=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
+    qty: Mapped[float] = mapped_column(nullable=True)
+    status: Mapped[int] = mapped_column()
+    filled: Mapped[float] = mapped_column(nullable=True)
 
 
 class PortfolioBase(DeclarativeBase):

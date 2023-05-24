@@ -15,10 +15,14 @@ class PositionValue:
     weight: float
     value: float
 
+
 @dataclass(frozen=True, eq=True)
 class PortfolioValue:
     cash: float
     positions: Dict[Asset, PositionValue]
+
+    def value(self):
+        return sum([p.value for p in self.positions.values()])
 
 
 class OrderTypes(Enum):
@@ -31,41 +35,61 @@ class OrderTypes(Enum):
 
 @dataclass(frozen=True, eq=True)
 class Order:
+    id: Any
     asset: Asset
     size: float
+    type = None
 
-    def delta(self, pv: PositionValue):
-        return 0
-
-
-@dataclass(frozen=True, eq=True)
-class CloseOrder(Order):
-    pass
+    def to_quantity(self, pv: PortfolioValue, price: float) -> 'QuantityOrder':
+        raise NotImplemented
 
 
 @dataclass(frozen=True, eq=True)
 class QuantityOrder(Order):
-    pass
+
+    type = OrderTypes.QUANTITY
+
+    def to_quantity(self, pv: PortfolioValue, price: float) -> 'QuantityOrder':
+        return self
+
+    def __add__(self, other: 'QuantityOrder'):
+        assert self.asset == other.asset, f"can not add orders of different assets {self.asset}, {other.asset}"
+        return QuantityOrder(self.asset, self.size + other.size)
+
+
+@dataclass(frozen=True, eq=True)
+class CloseOrder(Order):
+
+    type = OrderTypes.CLOSE
+
+    def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
+        return QuantityOrder(self.asset, -pv.positions[self.asset].qty)
 
 
 @dataclass(frozen=True, eq=True)
 class PercentOrder(Order):
-    pass
+
+    type = OrderTypes.PERCENT
+
+    def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
+        return QuantityOrder(self.asset, self.size * pv.cash / price)
 
 
 @dataclass(frozen=True, eq=True)
 class TargetQuantityOrder(Order):
 
-    def delta(self, pv: PositionValue):
-        #      10        - 12     => sell 2
-        return self.size - pv.qty
+    type = OrderTypes.TARGET_QUANTITY
+
+    def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
+        return QuantityOrder(self.asset, self.size - pv.positions[self.asset].qty)
 
 
 @dataclass(frozen=True, eq=True)
 class TargetWeightOrder(Order):
 
-    def delta(self, pv: PositionValue):
-        #      .01        - .012     => sell .002
-        return self.size - pv.weight
+    type = OrderTypes.TARGET_WEIGHT
+
+    def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
+        return QuantityOrder(self.asset, (pv.value() * (self.size - pv.positions[self.asset].weight)) / price)
 
 

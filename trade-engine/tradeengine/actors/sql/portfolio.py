@@ -17,6 +17,9 @@ CASH = Asset("$$$")
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)
 
 
+# TODO the PortfolioTrade is actually not needed at all and should be removed, if needed we could embed the delta data into the PortfolioHistory
+# TODO the PortfolioHistory should become it's own actor and we just tell him about recording history objects
+
 class SQLPortfolioActor(AbstractPortfolioActor):
 
     def __init__(
@@ -36,7 +39,7 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         session = self.session = Session(self.alchemy_engine, expire_on_commit=False)
 
         # get most recent positions
-        for pp in session.scalars(select(PortfolioPosition).where(PortfolioTrade.strategy_id == self.strategy_id)):
+        for pp in session.scalars(select(PortfolioPosition).where(PortfolioPosition.strategy_id == self.strategy_id)):
             self.positions[pp.asset] = pp
 
         # in case we have an empty portfolio initialize the cash position
@@ -53,8 +56,8 @@ class SQLPortfolioActor(AbstractPortfolioActor):
             self.update_position_value(CASH, funding_date, 1.0, 1.0)
 
     def on_stop(self) -> None:
-        # close database connection
         try:
+            # close database connection
             self.session.commit()
             self.alchemy_engine.dispose()
         except Exception as e:
@@ -160,6 +163,7 @@ class SQLPortfolioActor(AbstractPortfolioActor):
                 ]
             )
 
+    # TODO derelease this function ..
     def get_trades(self, as_of: datetime | None = None) -> pd.DataFrame:
         if as_of is None: as_of = datetime.max
 

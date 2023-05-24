@@ -51,11 +51,6 @@ class NewMarketDataMessage(Message):
 
 
 @dataclass(frozen=True, eq=True)
-class QuoteAskMarketData(NewMarketDataMessage):
-    quote: float
-
-
-@dataclass(frozen=True, eq=True)
 class NewBidAskMarketData(NewMarketDataMessage):
     bid: float
     ask: float
