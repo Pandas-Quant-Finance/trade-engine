@@ -1,17 +1,20 @@
+import logging
 from abc import abstractmethod
 from datetime import datetime
 from functools import partial
 from typing import Any, List, Tuple
 
+import numpy as np
 import pykka
 
 from tradeengine.dto.dataflow import OrderTypes, PortfolioValue, Order, QuantityOrder, \
-    Asset
+    Asset, ExpectedExecutionPrice
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData, PortfolioValueMessage, \
     NewPositionMessage, NewOrderMessage
 
 
 RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT)
+LOG = logging.getLogger(__name__)
 
 
 class AbstractOrderbookActor(pykka.ThreadingActor):
@@ -53,35 +56,45 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
 
     def new_market_data(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask):
         # evict orders
-        self._evict_orders(asset, as_of)
+        evicted = self._evict_orders(asset, as_of)
+        LOG.info(f"number of evicted orders for {asset} @ {as_of}", evicted)
 
         # check if we have an order and if an order would be executed and return if nothing to execute
+        expected_price = ExpectedExecutionPrice(as_of, open_bid, open_ask, close_bid, close_ask)
         executable_orders = self._get_orders_for_execution(asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask)
+        LOG.info(f"number of executable orders for {asset} @ {as_of}", len(executable_orders))
         if len(executable_orders) <= 0: return 0
 
-        need_portfolio_value = any(o.type for o, _ in executable_orders if o.type in [RELATIVE_ORDER_TYPES]) and len(executable_orders) > 1
+        need_portfolio_value = any(o.type for o in executable_orders if o.type in RELATIVE_ORDER_TYPES) and len(executable_orders) > 1
         pv: PortfolioValue = self.portfolio_actor.ask(PortfolioValueMessage()) if need_portfolio_value else None
 
         # sort orders by sell orders first:
-        for executable_order in sorted(executable_orders, key=partial(order_sorter, pv=pv)):
-            if abs(executable_order[0].size) > 1e-8:
-                self._execute_executable_order(*executable_order, asset, as_of)
+        definite_executed_orders = 0
+        for executable_order in sorted(executable_orders, key=partial(order_sorter, pv=pv, expected_price=expected_price)):
+            definite_executed_orders += self._execute_executable_order(executable_order, expected_price, asset, as_of)
 
         # number of orders processed
-        return len(executable_orders)
+        LOG.info(f"number of executed orders for {asset} @ {as_of}", definite_executed_orders)
+        return definite_executed_orders
 
-    def _execute_executable_order(self, order: Order, expected_price: float, asset: Asset, as_of: datetime):
+    def _execute_executable_order(self, order: Order, expected_price: ExpectedExecutionPrice, asset: Asset, as_of: datetime) -> bool:
         # check if we have orders which need the portfolio value to be executable. And sort such that we sell first
         # before we increase positions
-        need_portfolio_value = order.type in [RELATIVE_ORDER_TYPES]
+        need_portfolio_value = order.type in RELATIVE_ORDER_TYPES
         pv: PortfolioValue = self.portfolio_actor.ask(PortfolioValueMessage()) if need_portfolio_value else None
-        execute_order = order.to_quantity(pv, expected_price)
+        execute_quantity_order = order.to_quantity(pv, expected_price)
+        if abs(execute_quantity_order.size) <= 1e-8: return False
 
         # we only have one net order for one asset from one asset's price update which we execute now.
         # and then tell the portfolio actor about it
-        quantity, price, fee = self._execute_order(execute_order, expected_price, pv)
+        expected_execution_price = expected_price.evaluate_price(np.sign(order.size), order.valid_from, order.limit)
+        quantity, price, fee = self._execute_order(execute_quantity_order, expected_execution_price, pv)
+
         if quantity is not None:
             self.portfolio_actor.tell(NewPositionMessage(asset, as_of, quantity, price, fee))
+            return True
+
+        return False
 
     @abstractmethod
     def place_order(self, order: Order):
@@ -89,7 +102,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         raise NotImplemented
 
     @abstractmethod
-    def _get_orders_for_execution(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask) -> List[Tuple[Order, float]]:
+    def _get_orders_for_execution(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask) -> List[Order]:
         # all orders where valid_from >= as_of and valid_until >= as_of and where the limit is matched
         raise NotImplemented
 
@@ -101,14 +114,13 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         raise NotImplemented
 
     @abstractmethod
-    def _evict_orders(self, asset: Asset, as_of: datetime):
+    def _evict_orders(self, asset: Asset, as_of: datetime) -> int:
         # delete orders where valid_until < as_of from the orderbook and put it to the orderbook_history
+        # returns the number of evicted orders
         raise NotImplemented
 
 
-def order_sorter(order_with_expected_price: Tuple[Order, float], pv: PortfolioValue | None):
-    order, expected_price = order_with_expected_price
-
+def order_sorter(order: Order, expected_price: ExpectedExecutionPrice, pv: PortfolioValue | None):
     """
     we need the following order of orders: fifo by valid_from and then
         CLOSE,

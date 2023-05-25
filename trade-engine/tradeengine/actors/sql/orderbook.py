@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from tradeengine.actors.orderbook_actor import AbstractOrderbookActor
 from tradeengine.actors.sql.persitency import OrderBookBase, OrderBook
 from tradeengine.dto.dataflow import Order, QuantityOrder, PortfolioValue, OrderTypes, Asset, CloseOrder, PercentOrder, \
-    TargetQuantityOrder, TargetWeightOrder
+    TargetQuantityOrder, TargetWeightOrder, ExpectedExecutionPrice
 
 LOG = logging.getLogger(__name__)
 
@@ -64,8 +64,10 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         with Session(self.engine) as session:
             return list(session.scalars(select(OrderBook).where(OrderBook.strategy_id == self.strategy_id)))
 
-    def _evict_orders(self, asset: Asset, as_of: datetime):
+    def _evict_orders(self, asset: Asset, as_of: datetime) -> int:
         # delete orders where valid_until < as_of from the orderbook and put it to the orderbook_history
+        # returns the number of evicted orders
+        evicted = 0
         with Session(self.engine) as session:
             for order in session.scalars(
                 select(OrderBook)\
@@ -73,27 +75,25 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             ):
                 session.delete(order)
                 session.add(order.to_history(0, None))
+                evicted += 1
 
             session.commit()
 
-    def _get_orders_for_execution(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask) -> List[Tuple[Order, float]]:
+        return evicted
 
-        def map_order(o: OrderBook) -> Tuple[Order, float]:
-            # FIXME at this point we can not know if we need bid or ask!!
-            open, close = (open_bid if o.qty < 0 else open_ask), (close_bid if o.qty < 0 else close_ask)
-            price = (close if as_of > o.valid_from else open) if o.limit is None else o.limit
-
+    def _get_orders_for_execution(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask) -> List[Order]:
+        def map_order(o: OrderBook) -> Order:
             match o.order_type:
                 case OrderTypes.CLOSE:
-                    return CloseOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
+                    return CloseOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id)
                 case OrderTypes.QUANTITY:
-                    return QuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
+                    return QuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id)
                 case OrderTypes.TARGET_QUANTITY:
-                    return TargetQuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
+                    return TargetQuantityOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id)
                 case OrderTypes.PERCENT:
-                    return PercentOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
+                    return PercentOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id)
                 case OrderTypes.TARGET_WEIGHT:
-                    return TargetWeightOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id), price
+                    return TargetWeightOrder(o.asset, o.qty, o.valid_from, o.limit, o.stop_limit, o.valid_until, o.id)
 
         with Session(self.engine) as session:
             sql = _get_executable_orders_from_orderbook_sql(self.strategy_id, asset, as_of, high, low)

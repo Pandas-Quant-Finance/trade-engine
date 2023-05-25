@@ -60,14 +60,16 @@ class TestOrderBookActors(TestCase):
 
         time = datetime.now()
         ob.place_order(PercentOrder(AAPL, 1, time))
+        print("   1. ", ob.get_full_orderbook())
         self.assertEquals(ob.new_market_data(AAPL, datetime.now() - timedelta(seconds=10), 10, 10, 10, 10, 10, 10), 0)
         self.assertEquals(ob.new_market_data(AAPL, datetime.now(), 10, 10, 10, 10, 10, 10), 1)
 
         ob.place_order(CloseOrder(AAPL, None, datetime.now()))
+        print("   2. ", ob.get_full_orderbook())
         self.assertEquals(ob.new_market_data(AAPL, datetime.now(), 11, 11, 11, 11, 11, 11), 1)
 
         ob.place_order(PercentOrder(AAPL, 1, datetime.now()))
-
+        print("   3. ", ob.get_full_orderbook())
 
 
 
