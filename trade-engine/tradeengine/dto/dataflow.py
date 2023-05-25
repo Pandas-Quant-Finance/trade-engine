@@ -26,7 +26,7 @@ class PortfolioValue:
     positions: Dict[Asset, PositionValue]
 
     def value(self):
-        return sum([p.value for p in self.positions.values()])
+        return self.cash + sum([p.value for p in self.positions.values()])
 
 
 @dataclass(frozen=True, eq=True)

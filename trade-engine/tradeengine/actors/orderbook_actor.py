@@ -13,7 +13,7 @@ from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData,
     NewPositionMessage, NewOrderMessage
 
 
-RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT)
+RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT, OrderTypes.CLOSE)
 LOG = logging.getLogger(__name__)
 
 
@@ -87,7 +87,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
 
         # we only have one net order for one asset from one asset's price update which we execute now.
         # and then tell the portfolio actor about it
-        expected_execution_price = expected_price.evaluate_price(np.sign(order.size), order.valid_from, order.limit)
+        expected_execution_price = expected_price.evaluate_price(np.sign(execute_quantity_order.size), order.valid_from, order.limit)
         quantity, price, fee = self._execute_order(execute_quantity_order, expected_execution_price, pv)
 
         if quantity is not None:

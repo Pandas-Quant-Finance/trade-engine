@@ -5,12 +5,13 @@ from unittest import TestCase
 import numpy as np
 from sqlalchemy import create_engine
 
+from test_utils.database import get_sqlite_engine
 from test_utils.mocks import MockActor
 from tradeengine.actors.orderbook_actor import order_sorter
 from tradeengine.actors.sql.orderbook import SQLOrderbookActor
 from tradeengine.actors.sql.portfolio import SQLPortfolioActor
 from tradeengine.dto.dataflow import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder, PositionValue, \
-    PortfolioValue
+    PortfolioValue, ExpectedExecutionPrice
 
 AAPL = Asset("AAPL")
 
@@ -18,16 +19,16 @@ AAPL = Asset("AAPL")
 class TestOrderBookActors(TestCase):
 
     def test_orderbook_sort(self):
-        sorter = partial(order_sorter, pv=PortfolioValue(100, {None: PositionValue(None, 1, 0, 0)}))
         time = datetime.now()
+        sorter = partial(order_sorter, pv=PortfolioValue(100, {None: PositionValue(None, 1, 0, 0)}), expected_price=ExpectedExecutionPrice(time, 1,1,1,1))
 
         orders = [PercentOrder(None, 0.12, time, id=3), QuantityOrder(None, 10, time, id=2), QuantityOrder(None, -10, time, id=1), CloseOrder(None, None, time, id=0)]
-        orders_sorted = list(sorted([(o, 1) for o in orders], key=sorter))
+        orders_sorted = list(sorted(orders, key=sorter))
         print(orders_sorted)
-        self.assertListEqual([o.id for o, _ in orders_sorted], list(range(4)))
+        self.assertListEqual([o.id for o in orders_sorted], list(range(4)))
 
-        orders = [(PercentOrder(None, 0.12, time, id=0), 1), (CloseOrder(None, None, datetime.now(), id=1), 1)]
-        self.assertListEqual([o.id for o, _ in sorted(orders, key=sorter)], list(range(2)))
+        orders = [PercentOrder(None, 0.12, time, id=0), CloseOrder(None, None, datetime.now(), id=1)]
+        self.assertListEqual([o.id for o in sorted(orders, key=sorter)], list(range(2)))
 
     def test_order_book_eviction(self):
         ob = SQLOrderbookActor(None, create_engine('sqlite://', echo=True))
@@ -55,8 +56,9 @@ class TestOrderBookActors(TestCase):
         pass
 
     def test_multiple_orders(self):
-        pa = MockActor()
-        ob = SQLOrderbookActor(pa, create_engine('sqlite://', echo=True))
+        engine = get_sqlite_engine(False)
+        pa = MockActor(return_func=lambda x: PortfolioValue(100, {}))
+        ob = SQLOrderbookActor(pa, engine)
 
         time = datetime.now()
         ob.place_order(PercentOrder(AAPL, 1, time))
@@ -64,6 +66,7 @@ class TestOrderBookActors(TestCase):
         self.assertEquals(ob.new_market_data(AAPL, datetime.now() - timedelta(seconds=10), 10, 10, 10, 10, 10, 10), 0)
         self.assertEquals(ob.new_market_data(AAPL, datetime.now(), 10, 10, 10, 10, 10, 10), 1)
 
+        pa.return_func = lambda x: PortfolioValue(0, {AAPL: PositionValue(AAPL, 10, 1, 100)})
         ob.place_order(CloseOrder(AAPL, None, datetime.now()))
         print("   2. ", ob.get_full_orderbook())
         self.assertEquals(ob.new_market_data(AAPL, datetime.now(), 11, 11, 11, 11, 11, 11), 1)
