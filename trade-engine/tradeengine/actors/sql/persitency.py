@@ -64,23 +64,6 @@ class PortfolioBase(DeclarativeBase):
         return f'{self.__class__.__name__}({params})'
 
 
-class PortfolioTrade(PortfolioBase):
-    # FIXME this class is obsolete
-    __tablename__ = 'portfolio_trade'
-    strategy_id: Mapped[str] = mapped_column(primary_key=True)
-    asset: Mapped[Asset] = composite(mapped_column(String(255), primary_key=True))
-    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
-    quantity: Mapped[float] = mapped_column()
-    cost: Mapped[float] = mapped_column()
-
-    def to_dict(self):
-        return dict(
-            strategy_id=self.strategy_id,
-            asset=self.asset,
-            time=self.time,
-            quantity=self.quantity,
-            cost=self.cost,
-        )
 
 
 class PortfolioPosition(PortfolioBase, _Position_addition):

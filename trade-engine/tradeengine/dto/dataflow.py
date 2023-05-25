@@ -51,8 +51,10 @@ class _Position_addition(object):
 @dataclass(frozen=False, eq=True)
 class Position(_Position_addition):
     asset: Asset
+    time: datetime
     quantity: float
     cost_basis: float
+    value: float
     pnl: float = 0
 
     def __add__(self, other: Tuple[float, float]):

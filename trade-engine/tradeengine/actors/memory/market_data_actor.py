@@ -12,6 +12,7 @@ from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData
 
 LOG = logging.getLogger(__name__)
 
+
 class PandasQuoteProviderActor(AbstractQuoteProviderActor):
 
     def __init__(
@@ -50,8 +51,5 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
                 )
 
                 # use ask to be sure portfolio has all data processed before we execute orders
-                try:
-                    self.portfolio_actor.ask(message)
-                    self.orderbook_actor.ask(message, block=self.blocking)
-                except Exception as e:
-                    print(e)
+                self.portfolio_actor.ask(message)
+                self.orderbook_actor.ask(message, block=self.blocking)

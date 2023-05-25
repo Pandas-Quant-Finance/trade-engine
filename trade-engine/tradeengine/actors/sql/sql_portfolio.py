@@ -9,14 +9,13 @@ import pandas as pd
 from sqlalchemy import Engine, text, select, func, update
 from sqlalchemy.orm import Session
 from tradeengine.actors.portfolio_actor import AbstractPortfolioActor
-from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioTrade, PortfolioHistory, PortfolioPosition
+from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioHistory, PortfolioPosition
 from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset, CASH
 
 LOG = logging.getLogger(__name__)
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)
 
 
-# TODO the PortfolioTrade is actually not needed at all and should be removed, if needed we could embed the delta data into the PortfolioHistory
 # TODO the PortfolioHistory should become it's own actor and we just tell him about recording history objects
 
 class SQLPortfolioActor(AbstractPortfolioActor):
@@ -45,7 +44,6 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         # in case we have an empty portfolio initialize the cash position
         if len(self.positions) <= 0:
             initial_portfolio = [
-                PortfolioTrade(strategy_id=self.strategy_id, asset=CASH, time=funding_date, quantity=funding, cost=1.0),
                 PortfolioPosition(strategy_id=self.strategy_id, asset=CASH, time=funding_date, quantity=funding, cost_basis=1.0, value=funding),
             ]
 
@@ -76,11 +74,6 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         # keep record of every single trade we made, we don't want these guys to stick around in some session memory
         # maybe there is a better way then opening a new session for this.
         with Session(self.alchemy_engine) as session:
-            session.add_all([
-                PortfolioTrade(strategy_id=self.strategy_id, asset=asset, time=as_of, quantity=quantity, cost=price),
-                PortfolioTrade(strategy_id=self.strategy_id, asset=CASH, time=as_of, quantity=cost, cost=1.0),
-            ])
-
             # if this is the first non-cash position, we update the funding date (for pure convenience)
             if len(self.positions) <= 1:
                 self.positions[CASH].time = as_of - timedelta(days=1)
@@ -118,8 +111,11 @@ class SQLPortfolioActor(AbstractPortfolioActor):
 
         # we don't want these guys to stick around in some session memory
         # maybe there is a better way then opening a new session for this.
+        # FIXME this is a problem when we have more then one trades for the same timestamp as any trade is against the
+        #  CASH asset and thus raises a duplicate key error. But one idea is anyways to introduce a save history actor
+        #  that one should implement some sort of upsert ...
         with Session(self.alchemy_engine) as session:
-            session.add(
+            session.merge(
                 PortfolioHistory(
                     strategy_id=self.strategy_id,
                     asset=asset,
@@ -165,19 +161,4 @@ class SQLPortfolioActor(AbstractPortfolioActor):
                 ]
             )
 
-    # TODO derelease this function ..
-    def get_trades(self, as_of: datetime | None = None) -> pd.DataFrame:
-        if as_of is None: as_of = datetime.max
-
-        with Session(self.alchemy_engine) as session:
-            return pd.DataFrame(
-                [
-                    pp.to_dict() for pp in
-                        session.scalars(
-                            select(PortfolioTrade)\
-                                .where((PortfolioTrade.strategy_id == self.strategy_id) & (PortfolioTrade.time <= as_of))\
-                                .order_by(PortfolioTrade.time)
-                        )
-                ]
-            )
 

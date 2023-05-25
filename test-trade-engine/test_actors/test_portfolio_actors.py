@@ -1,18 +1,14 @@
 from datetime import datetime
+from unittest import TestCase
 
 import numpy as np
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
-from unittest import TestCase
+from ddt import ddt
 from numpy import testing as nt
+from sqlalchemy import create_engine
 
-from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioTrade
+from testutils.data import AAPL, MSFT
 from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor, CASH
-from tradeengine.dto.dataflow import Asset
 
-AAPL = Asset("AAPL")
-MSFT = Asset("MSFT")
 
 
 # TODO google how to run the same test for various sub-classes
@@ -32,8 +28,7 @@ class TestPortfolioActor(TestCase):
         port.add_new_position(AAPL, datetime.now(), -5, 11.2, 0)
         print(port.get_portfolio_value(datetime.now()))
 
-    # TODO use ddt and data to test every implementaion of the portfolio actor
-    #@data(SQLPortfolioActor(create_engine('sqlite://', echo=True)),)
+    #@data(SQLPortfolioActor(create_engine('sqlite://', echo=True)), MemPortfolioActor())
     #def test_add_position(self, port):
     def test_add_position(self):
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True))
@@ -122,24 +117,6 @@ class TestPortfolioActor(TestCase):
         self.assertEquals((hist[0].index[1] - hist[0].index[0]).days, 1)
         self.assertEquals((hist[1].index[1] - hist[1].index[0]).days, 1)
 
-        # check trades
-        trades = port.get_trades().set_index(['asset', 'time'])
-        nt.assert_array_almost_equal(
-            trades.loc[CASH, ['quantity', 'cost']].values,
-            np.array([
-                [1, 1],
-                [-122, 1],
-                [61, 1],
-            ])
-        )
-        nt.assert_array_almost_equal(
-            trades.loc[AAPL, ['quantity', 'cost']].values,
-            np.array([
-                [10, 12.2],
-                [-5, 12.2],
-            ])
-        )
-
         # finalize
         port.on_stop()
 
@@ -184,6 +161,13 @@ class TestPortfolioActor(TestCase):
 
         # finalize
         port.on_stop()
+
+    def test_multiple_trades(self):
+        port = SQLPortfolioActor(create_engine('sqlite://', echo=True), funding=301)
+        time = datetime.now()
+        port.add_new_position(AAPL, time, 10, 20, 0)
+        port.add_new_position(MSFT, time, 10, 10, 0)
+
 
     def test_proceed_with_portfolio(self):
         # TODO ...
