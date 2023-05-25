@@ -4,14 +4,11 @@ from unittest import TestCase
 import pandas as pd
 import pandas.testing
 
-from tradeengine.actors.market_data_actor import PandasQuoteProviderActor
+from test_utils.mocks import MockActor
+from tradeengine.actors.memory.market_data_actor import PandasQuoteProviderActor
 from tradeengine.dto.dataflow import Asset
 
 
-class MockActor():
-    def __init__(self): self.received = []
-    def ask(self, *args): self.received.append(args[0])
-    def tell(self, *args): self.received.append(args[0])
 
 
 class TestMarketDataActors(TestCase):

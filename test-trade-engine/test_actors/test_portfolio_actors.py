@@ -11,6 +11,9 @@ from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioTrade
 from tradeengine.actors.sql.portfolio import SQLPortfolioActor, CASH
 from tradeengine.dto.dataflow import Asset
 
+AAPL = Asset("AAPL")
+MSFT = Asset("MSFT")
+
 
 # TODO google how to run the same test for various sub-classes
 # TODO eventually implement a memory version of the sql portfolio actor (should be copy paste + abstract data access)
@@ -21,12 +24,12 @@ class TestPortfolioActor(TestCase):
         engine = create_engine('sqlite:///foo.db', echo=True)
 
         port = SQLPortfolioActor(engine)
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 12.2, 0)
+        port.add_new_position(AAPL, datetime.now(), 10, 12.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), -5, 13.2, 0)
-        port.add_new_position(Asset("AAPL"), datetime.now(), -5, 11.2, 0)
+        port.add_new_position(AAPL, datetime.now(), -5, 13.2, 0)
+        port.add_new_position(AAPL, datetime.now(), -5, 11.2, 0)
         print(port.get_portfolio_value(datetime.now()))
 
     # TODO use ddt and data to test every implementaion of the portfolio actor
@@ -35,32 +38,32 @@ class TestPortfolioActor(TestCase):
     def test_add_position(self):
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True))
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 12.2, 0)
+        port.add_new_position(AAPL, datetime.now(), 10, 12.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 122.0)
-        self.assertEquals(values.positions[Asset("AAPL")].qty, 10)
+        self.assertEquals(values.positions[AAPL].value, 122.0)
+        self.assertEquals(values.positions[AAPL].qty, 10)
         self.assertEquals(values.positions[CASH].value, -121.0)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), -5, 13.2, 0)
+        port.add_new_position(AAPL, datetime.now(), -5, 13.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 13.2 * 5)
-        self.assertEquals(values.positions[Asset("AAPL")].qty, 5)
+        self.assertEquals(values.positions[AAPL].value, 13.2 * 5)
+        self.assertEquals(values.positions[AAPL].qty, 5)
         self.assertEquals(values.positions[CASH].value, -121 + 13.2 * 5)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), -6, 11.2, 0)
+        port.add_new_position(AAPL, datetime.now(), -6, 11.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, -11.2)
-        self.assertEquals(values.positions[Asset("AAPL")].qty, -1)
+        self.assertEquals(values.positions[AAPL].value, -11.2)
+        self.assertEquals(values.positions[AAPL].qty, -1)
         self.assertEquals(values.positions[CASH].value, -121 + 13.2 * 5 + 11.2 * 6)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), 1, 10.2, 0)
+        port.add_new_position(AAPL, datetime.now(), 1, 10.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 0)
-        self.assertEquals(values.positions[Asset("AAPL")].qty, 0)
+        self.assertEquals(values.positions[AAPL].value, 0)
+        self.assertEquals(values.positions[AAPL].qty, 0)
         self.assertEquals(values.positions[CASH].value, -121 + 13.2 * 5 + 11.2 * 6 - 10.2)
 
         # finalize
@@ -69,34 +72,34 @@ class TestPortfolioActor(TestCase):
     def test_evaluate_position(self):
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True))
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 12.2, 0)
+        port.add_new_position(AAPL, datetime.now(), 10, 12.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 122.0)
+        self.assertEquals(values.positions[AAPL].value, 122.0)
         self.assertEquals(values.positions[CASH].value, -121.0)
 
-        port.update_position_value(Asset("AAPL"), datetime.now(), 13.2, 13.2)
+        port.update_position_value(AAPL, datetime.now(), 13.2, 13.2)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 132.0)
+        self.assertEquals(values.positions[AAPL].value, 132.0)
         self.assertEquals(values.positions[CASH].value, -121.0)
 
-        port.update_position_value(Asset("AAPL"), datetime.now(), 11.2, 11.2)
+        port.update_position_value(AAPL, datetime.now(), 11.2, 11.2)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 112.0)
+        self.assertEquals(values.positions[AAPL].value, 112.0)
         self.assertEquals(values.positions[CASH].value, -121.0)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), -5, 12.2, 0)
+        port.add_new_position(AAPL, datetime.now(), -5, 12.2, 0)
         values = port.get_portfolio_value(datetime.now())
         self.assertEquals(len(values.positions), 2)
-        self.assertEquals(values.positions[Asset("AAPL")].value, 122.0 / 2.)
+        self.assertEquals(values.positions[AAPL].value, 122.0 / 2.)
         self.assertEquals(values.positions[CASH].value, -121.0 + 12.2 * 5)
 
         # check timeseries
         df = port.get_portfolio_timeseries().set_index(["asset", "time"])
         self.assertEquals(df.loc[CASH, "value"].to_list(), [1, -121, -60])
-        self.assertEquals(df.loc[Asset("AAPL"), "value"].to_list(), [122, 132, 112, 12.2 * 5])
+        self.assertEquals(df.loc[AAPL, "value"].to_list(), [122, 132, 112, 12.2 * 5])
 
         hist = port.get_performance_history()
         # print(hist)
@@ -130,7 +133,7 @@ class TestPortfolioActor(TestCase):
             ])
         )
         nt.assert_array_almost_equal(
-            trades.loc[Asset("AAPL"), ['quantity', 'cost']].values,
+            trades.loc[AAPL, ['quantity', 'cost']].values,
             np.array([
                 [10, 12.2],
                 [-5, 12.2],
@@ -143,8 +146,8 @@ class TestPortfolioActor(TestCase):
     def test_weights(self):
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True), funding=301)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 20, 0)
-        port.add_new_position(Asset("MSFT"), datetime.now(), 10, 10, 0)
+        port.add_new_position(AAPL, datetime.now(), 10, 20, 0)
+        port.add_new_position(MSFT, datetime.now(), 10, 10, 0)
 
         pv = port.get_portfolio_value()
         self.assertEquals(pv.cash, 1)
@@ -153,8 +156,8 @@ class TestPortfolioActor(TestCase):
             np.array([0.003322, 0.664452, 0.332226]),
         )
 
-        port.update_position_value(Asset("MSFT"), datetime.now(), 20, 20)
-        port.update_position_value(Asset("AAPL"), datetime.now(), 10, 10)
+        port.update_position_value(MSFT, datetime.now(), 20, 20)
+        port.update_position_value(AAPL, datetime.now(), 10, 10)
 
         pv = port.get_portfolio_value()
         self.assertEquals(pv.cash, 1)
@@ -169,8 +172,8 @@ class TestPortfolioActor(TestCase):
         # restart use leverage weights
         port = SQLPortfolioActor(create_engine('sqlite://', echo=True), funding=1)
 
-        port.add_new_position(Asset("AAPL"), datetime.now(), 10, 20, 0)
-        port.add_new_position(Asset("MSFT"), datetime.now(), 10, 10, 0)
+        port.add_new_position(AAPL, datetime.now(), 10, 20, 0)
+        port.add_new_position(MSFT, datetime.now(), 10, 10, 0)
 
         pv = port.get_portfolio_value()
         self.assertEquals(pv.cash, -299)

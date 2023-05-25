@@ -79,6 +79,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
     def _get_orders_for_execution(self, asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask) -> List[Tuple[Order, float]]:
 
         def map_order(o: OrderBook) -> Tuple[Order, float]:
+            # FIXME at this point we can not know if we need bid or ask!!
             open, close = (open_bid if o.qty < 0 else open_ask), (close_bid if o.qty < 0 else close_ask)
             price = (close if as_of > o.valid_from else open) if o.limit is None else o.limit
 
@@ -105,12 +106,12 @@ class SQLOrderbookActor(AbstractOrderbookActor):
 
         with Session(self.engine) as session:
             # later we may want to implement partial execution, for now we execute everything as is and move to history
-            for order in session.scalars(
+            for o in session.scalars(
                 select(OrderBook)\
                     .where((OrderBook.strategy_id == self.strategy_id) & (OrderBook.id == order.id))
             ):
-                session.delete(order)
-                session.add(order.to_history(1, expected_price))
+                session.delete(o)
+                session.add(o.to_history(1, expected_price))
 
             session.commit()
 
@@ -127,6 +128,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
 
 def _get_executable_orders_from_orderbook_sql(strategy_id, asset, as_of, low, high):
     # all orders where valid_from >= as_of and valid_until >= as_of and where the limit is matched
+    # return fifo
     return select(OrderBook) \
         .where(
             and_(
@@ -147,4 +149,5 @@ def _get_executable_orders_from_orderbook_sql(strategy_id, asset, as_of, low, hi
                     ) == 1,
                 )
             )
-        )
+        )\
+        .order_by(OrderBook.valid_from)

@@ -57,14 +57,18 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
 
         # check if we have an order and if an order would be executed and return if nothing to execute
         executable_orders = self._get_orders_for_execution(asset, as_of, open_bid, open_ask, high, low, close_bid, close_ask)
-        if len(executable_orders) <= 0: return
+        if len(executable_orders) <= 0: return 0
 
-        need_portfolio_value = any(o.type for o, _ in executable_orders if o.type in [RELATIVE_ORDER_TYPES])
+        need_portfolio_value = any(o.type for o, _ in executable_orders if o.type in [RELATIVE_ORDER_TYPES]) and len(executable_orders) > 1
         pv: PortfolioValue = self.portfolio_actor.ask(PortfolioValueMessage()) if need_portfolio_value else None
 
         # sort orders by sell orders first:
         for executable_order in sorted(executable_orders, key=partial(order_sorter, pv=pv)):
-            self._execute_executable_order(*executable_order, asset, as_of)
+            if abs(executable_order[0].size) > 1e-8:
+                self._execute_executable_order(*executable_order, asset, as_of)
+
+        # number of orders processed
+        return len(executable_orders)
 
     def _execute_executable_order(self, order: Order, expected_price: float, asset: Asset, as_of: datetime):
         # check if we have orders which need the portfolio value to be executable. And sort such that we sell first
@@ -102,11 +106,11 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         raise NotImplemented
 
 
-def order_sorter(order_with_expected_price: Tuple[Order, float], pv: PortfolioValue | None) -> int:
+def order_sorter(order_with_expected_price: Tuple[Order, float], pv: PortfolioValue | None):
     order, expected_price = order_with_expected_price
 
     """
-    we need the following order of orders
+    we need the following order of orders: fifo by valid_from and then
         CLOSE,
         QUANTITY < 0
         TARGET_QUANTITY - p.qty < 0
@@ -118,20 +122,20 @@ def order_sorter(order_with_expected_price: Tuple[Order, float], pv: PortfolioVa
     """
     match (order.type, order.to_quantity(pv, expected_price).size):
         case (OrderTypes.CLOSE, _):
-            return 0
+            return order.valid_from, 0
         case (OrderTypes.QUANTITY, qty) if qty < 0:
-            return 1
+            return order.valid_from, 1
         case (OrderTypes.TARGET_QUANTITY, qty) if qty < 0:
-            return 2
+            return order.valid_from, 2
         case (OrderTypes.TARGET_WEIGHT, qty) if qty < 0:
-            return 3
+            return order.valid_from, 3
         case (OrderTypes.QUANTITY, _):
-            return 4
+            return order.valid_from, 4
         case (OrderTypes.TARGET_QUANTITY, _):
-            return 4
+            return order.valid_from, 4
         case (OrderTypes.TARGET_WEIGHT, _):
-            return 4
+            return order.valid_from, 4
         case (OrderTypes.PERCENT, _):
-            return 5
+            return order.valid_from, 5
         case _:
-            return 999
+            return order.valid_from, 999

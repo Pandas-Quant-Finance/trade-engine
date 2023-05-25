@@ -74,7 +74,8 @@ class CloseOrder(Order):
     type = OrderTypes.CLOSE
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        return QuantityOrder(self.asset, -pv.positions[self.asset].qty, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+        q = -pv.positions[self.asset].qty if pv is not None and self.asset in pv.positions else 0
+        return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -84,7 +85,8 @@ class PercentOrder(Order):
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
         # note that percent orders can only be positive and only executed with a positive balance
-        return QuantityOrder(self.asset, max(self.size, 0) * max(pv.cash, 0) / price, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+        q = max(self.size, 0) * max(pv.cash, 0) / price if pv is not None else 0
+        return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
 
 @dataclass(frozen=True, eq=True)
@@ -93,7 +95,7 @@ class TargetQuantityOrder(Order):
     type = OrderTypes.TARGET_QUANTITY
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        if self.asset in pv.positions:
+        if pv is not None and self.asset in pv.positions:
             q = self.size - pv.positions[self.asset].qty
         else:
             q = self.size
@@ -107,7 +109,7 @@ class TargetWeightOrder(Order):
     type = OrderTypes.TARGET_WEIGHT
 
     def to_quantity(self, pv: PortfolioValue, price: float) -> QuantityOrder:
-        if self.asset in pv.positions:
+        if pv is not None and self.asset in pv.positions:
             w = self.size - pv.positions[self.asset].weight
         else:
             w = self.size
