@@ -15,11 +15,6 @@ class PortfolioValueMessage(Message):
 
 
 @dataclass(frozen=True, eq=True)
-class PortfolioTradesMessage(Message):
-    as_of: datetime | None = None
-
-
-@dataclass(frozen=True, eq=True)
 class PortfolioPerformanceMessage(Message):
     as_of: datetime | None = None
     resample_rule: str | None = None

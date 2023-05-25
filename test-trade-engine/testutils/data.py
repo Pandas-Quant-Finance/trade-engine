@@ -10,4 +10,5 @@ FRAMES = {
 }
 
 ASSETS = list[FRAMES.keys()]
-
+AAPL = Asset("AAPL")
+MSFT = Asset("MSFT")

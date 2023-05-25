@@ -8,7 +8,7 @@ from unittest import TestCase
 from numpy import testing as nt
 
 from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioTrade
-from tradeengine.actors.sql.portfolio import SQLPortfolioActor, CASH
+from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor, CASH
 from tradeengine.dto.dataflow import Asset
 
 AAPL = Asset("AAPL")

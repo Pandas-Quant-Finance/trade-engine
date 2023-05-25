@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import abstractmethod
 from datetime import datetime
 from typing import Any, Tuple
@@ -9,7 +10,10 @@ import pykka
 
 from tradeengine.dto.dataflow import PortfolioValue
 from tradeengine.messages.messages import PortfolioValueMessage, \
-    NewBidAskMarketData, NewBarMarketData, NewPositionMessage, PortfolioPerformanceMessage, PortfolioTradesMessage
+    NewBidAskMarketData, NewBarMarketData, NewPositionMessage, PortfolioPerformanceMessage
+
+LOG = logging.getLogger(__name__)
+
 
 class AbstractPortfolioActor(pykka.ThreadingActor):
     """
@@ -35,6 +39,9 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
         self.funding = funding
         # self.quote_provider: pykka.ActorRef | None = None
 
+    def on_stop(self) -> None:
+        LOG.debug(f"stopped orderbook actor {self}")
+
     def on_receive(self, message: Any) -> Any:
         match message:
             #case NewMarketDataProviderMessage(provider):
@@ -42,8 +49,6 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
 
             case PortfolioValueMessage(as_of):
                 return self.get_portfolio_value(as_of)
-            case PortfolioTradesMessage(as_of):
-                return self.get_trades(as_of)
             case PortfolioPerformanceMessage(as_of, resample_rule):
                 return self.get_performance_history(as_of, resample_rule)
 
@@ -87,6 +92,3 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
     def update_position_value(self, asset, as_of, bid, ask):
         raise NotImplemented
 
-    @abstractmethod      # TODO derelease this function ..
-    def get_trades(self, as_of: datetime | None = None) -> pd.DataFrame:
-        raise NotImplemented

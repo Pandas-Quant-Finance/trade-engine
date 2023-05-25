@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import List, Dict
 
 import pandas as pd
@@ -9,6 +10,7 @@ from tradeengine.actors.market_data_actor import AbstractQuoteProviderActor
 from tradeengine.dto.dataflow import Asset
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData
 
+LOG = logging.getLogger(__name__)
 
 class PandasQuoteProviderActor(AbstractQuoteProviderActor):
 
@@ -29,6 +31,9 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
 
         self.is_bar = len(columns) == 4
 
+    def on_stop(self) -> None:
+        LOG.debug(f"stopped market data actor {self}")
+
     def replay_all_market_data(self):
         # IMPORTANT always update the portfolio first!
         #self.portfolio_actor.ask()  # ask to be sure portfolio has all data
@@ -45,6 +50,8 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
                 )
 
                 # use ask to be sure portfolio has all data processed before we execute orders
-                self.portfolio_actor.ask(message)
-                self.orderbook_actor.ask(message, block=self.blocking)
-
+                try:
+                    self.portfolio_actor.ask(message)
+                    self.orderbook_actor.ask(message, block=self.blocking)
+                except Exception as e:
+                    print(e)

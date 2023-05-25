@@ -38,6 +38,9 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         super().__init__()
         self.portfolio_actor = portfolio_actor
 
+    def on_stop(self) -> None:
+        LOG.debug(f"stopped orderbook actor {self}")
+
     def on_receive(self, message: Any) -> Any:
         match message:
             # if message is PlaceOrder, we store the order in the orderbook
@@ -70,7 +73,8 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
 
         # sort orders by sell orders first:
         definite_executed_orders = 0
-        for executable_order in sorted(executable_orders, key=partial(order_sorter, pv=pv, expected_price=expected_price)):
+        sort_key_function = partial(order_sorter, pv=pv, expected_price=expected_price) if len(executable_orders) > 1 else lambda _:0
+        for executable_order in sorted(executable_orders, key=sort_key_function):
             definite_executed_orders += self._execute_executable_order(executable_order, expected_price, asset, as_of)
 
         # number of orders processed

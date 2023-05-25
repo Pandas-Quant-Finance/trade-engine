@@ -10,10 +10,9 @@ from sqlalchemy import Engine, text, select, func, update
 from sqlalchemy.orm import Session
 from tradeengine.actors.portfolio_actor import AbstractPortfolioActor
 from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioTrade, PortfolioHistory, PortfolioPosition
-from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset
+from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset, CASH
 
 LOG = logging.getLogger(__name__)
-CASH = Asset("$$$")
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)
 
 
@@ -63,6 +62,8 @@ class SQLPortfolioActor(AbstractPortfolioActor):
             self.alchemy_engine.dispose()
         except Exception as e:
             LOG.error(e)
+        finally:
+            super().on_stop()
 
     def add_new_position(self, asset, as_of, quantity, price, fee):
         assert as_of > self.funding_date, f"can't add trades before the portfolio was funded! {as_of} > {self.funding_date}"

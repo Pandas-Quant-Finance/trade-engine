@@ -4,7 +4,7 @@ from typing import Tuple
 from sqlalchemy import ForeignKey, String, DateTime, Integer, Enum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, composite
 
-from tradeengine.dto.dataflow import Asset, OrderTypes
+from tradeengine.dto.dataflow import Asset, OrderTypes, _Position_addition
 
 
 # objects for SQL Alchemy
@@ -65,6 +65,7 @@ class PortfolioBase(DeclarativeBase):
 
 
 class PortfolioTrade(PortfolioBase):
+    # FIXME this class is obsolete
     __tablename__ = 'portfolio_trade'
     strategy_id: Mapped[str] = mapped_column(primary_key=True)
     asset: Mapped[Asset] = composite(mapped_column(String(255), primary_key=True))
@@ -82,7 +83,7 @@ class PortfolioTrade(PortfolioBase):
         )
 
 
-class PortfolioPosition(PortfolioBase):
+class PortfolioPosition(PortfolioBase, _Position_addition):
     __tablename__ = 'portfolio_position'
     strategy_id: Mapped[str] = mapped_column(primary_key=True)
     asset: Mapped[Asset] = composite(mapped_column(String(255), primary_key=True))
@@ -92,23 +93,10 @@ class PortfolioPosition(PortfolioBase):
     value: Mapped[float] = mapped_column()
 
     def __add__(self, other: Tuple[float, float]):
-        other_qty, other_price = other
-        new_qty = self.quantity + other_qty
-
-        if self.quantity > 0 and new_qty < self.quantity:
-            new_cost_basis = self.cost_basis if new_qty >= 0 else other_price
-        elif 0 < self.quantity < new_qty:
-            new_cost_basis = (self.cost_basis * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
-        elif self.quantity < 0 and new_qty > self.quantity:
-            new_cost_basis = self.cost_basis if new_qty <= 0 else other_price
-        elif 0 > self.quantity > new_qty:
-            new_cost_basis = (self.cost_basis * self.quantity + other_price * other_qty) / (self.quantity + other_qty)
-        else:
-            new_cost_basis = other_price
-
+        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price((self.quantity, self.cost_basis, 0), other)
         self.quantity = new_qty
         self.cost_basis = new_cost_basis
-        self.value = (new_qty * other_price)
+        self.value = new_value
         return self
 
     def __sub__(self, other: Tuple[float, float]):

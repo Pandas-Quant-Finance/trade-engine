@@ -5,11 +5,11 @@ from unittest import TestCase
 import numpy as np
 from sqlalchemy import create_engine
 
-from test_utils.database import get_sqlite_engine
-from test_utils.mocks import MockActor
+from testutils.database import get_sqlite_engine
+from testutils.mocks import MockActor
 from tradeengine.actors.orderbook_actor import order_sorter
-from tradeengine.actors.sql.orderbook import SQLOrderbookActor
-from tradeengine.actors.sql.portfolio import SQLPortfolioActor
+from tradeengine.actors.sql.sql_orderbook import SQLOrderbookActor
+from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor
 from tradeengine.dto.dataflow import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder, PositionValue, \
     PortfolioValue, ExpectedExecutionPrice
 

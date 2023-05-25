@@ -3,7 +3,7 @@ from typing import Dict, Literal
 import numpy as np
 import pandas as pd
 
-from test_utils.data import FRAMES
+from testutils.data import FRAMES
 from tradeengine.dto.dataflow import Asset, TargetWeightOrder, PercentOrder, CloseOrder
 
 

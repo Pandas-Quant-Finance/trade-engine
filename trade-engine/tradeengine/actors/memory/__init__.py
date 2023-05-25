@@ -1,1 +1,2 @@
 from .market_data_actor import PandasQuoteProviderActor
+from .mem_portfolio import MemPortfolioActor

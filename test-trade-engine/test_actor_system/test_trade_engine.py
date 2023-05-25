@@ -8,9 +8,9 @@ import pandas as pd
 import pykka
 from sqlalchemy import create_engine, StaticPool
 
-from test_utils.data import FRAMES
-from test_utils.database import get_sqlite_engine
-from test_utils.trading import sample_strategy
+from testutils.data import FRAMES
+from testutils.database import get_sqlite_engine
+from testutils.trading import sample_strategy
 from tradeengine.actors.memory import PandasQuoteProviderActor
 from tradeengine.actors.sql import SQLOrderbookActor
 from tradeengine.actors.sql import SQLPortfolioActor
@@ -40,7 +40,7 @@ class TestActorTradeEngine(TestCase):
 
     def test_foo(self):
         strategy_id: str = str(uuid.uuid4())
-        portfolio_actor = SQLPortfolioActor.start(get_sqlite_engine(False), strategy_id=strategy_id)
+        portfolio_actor = SQLPortfolioActor.start(get_sqlite_engine(True), strategy_id=strategy_id)
         orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id)
 
         backtest_strategy(
@@ -48,6 +48,7 @@ class TestActorTradeEngine(TestCase):
             portfolio_actor,
             FRAMES,
             sample_strategy(),
+            # shutdown_on_complete=False
         )
 
         # print(orderbook_actor.proxy().get_full_orderbook())

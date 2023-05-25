@@ -42,6 +42,8 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             self.engine.dispose()
         except Exception as e:
             LOG.error(e)
+        finally:
+            super().on_stop()
 
     def place_order(self, order: Order):
         # simply store the order in the datastructure i.e. sqlite

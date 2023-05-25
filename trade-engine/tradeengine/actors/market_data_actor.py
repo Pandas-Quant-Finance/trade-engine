@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pykka
 
 from tradeengine.messages.messages import ReplayAllMarketDataMessage, \
     NewBidAskMarketData, NewBarMarketData
+
+LOG = logging.getLogger(__name__)
 
 
 class AbstractQuoteProviderActor(pykka.ThreadingActor):
@@ -35,6 +38,9 @@ class AbstractQuoteProviderActor(pykka.ThreadingActor):
         self.portfolio_actor = portfolio_actor
         self.orderbook_actor = orderbook_actor
         self.portfolio_update_timeout = portfolio_update_timeout
+
+    def on_stop(self) -> None:
+        LOG.debug(f"stopped orderbook actor {self}")
 
     def on_receive(self, message: Any) -> Any:
         match message:

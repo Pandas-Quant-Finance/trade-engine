@@ -4,7 +4,7 @@ from unittest import TestCase
 import pandas as pd
 import pandas.testing
 
-from test_utils.mocks import MockActor
+from testutils.mocks import MockActor
 from tradeengine.actors.memory.market_data_actor import PandasQuoteProviderActor
 from tradeengine.dto.dataflow import Asset
 
