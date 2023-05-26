@@ -96,10 +96,10 @@ class SQLPortfolioActor(AbstractPortfolioActor):
 
         # since we executed a trade for a given price we know exactly the price of the asset, and thus we
         # re-evaluate the portfolio.
-        self.update_position_value(asset, as_of + timedelta(milliseconds=1), price, price)
+        self.update_position_value(asset, as_of, price, price)
 
         # Also since cash probably never gets a price we need to force cash evaluation as well
-        self.update_position_value(CASH, as_of + timedelta(milliseconds=1), 1.0, 1.0)
+        self.update_position_value(CASH, as_of, 1.0, 1.0)
 
     def update_position_value(self, asset, as_of, bid, ask):
         pos = self.positions.get(asset, None)

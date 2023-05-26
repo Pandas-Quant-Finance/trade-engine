@@ -39,10 +39,11 @@ class MemPortfolioActor(AbstractPortfolioActor):
         # every trade as a cost aspect as in cash
         cost = -quantity * price - fee
 
-        # keep record of every single trade we made
         # if this is the first non-cash position, we update the funding date (for pure convenience)
         if len(self.positions) <= 1:
             self.positions[CASH].time = as_of - timedelta(days=1)
+            self.portfolio_history[0].name = self.positions[CASH].time
+            self.portfolio_history[0].time = self.positions[CASH].time
 
         # update all current positions
         self.positions[CASH] += (cost, 1.0)
@@ -52,10 +53,10 @@ class MemPortfolioActor(AbstractPortfolioActor):
 
         # since we executed a trade for a given price we know exactly the price of the asset, and thus we
         # re-evaluate the portfolio.
-        self.update_position_value(asset, as_of + timedelta(milliseconds=1), price, price)
+        self.update_position_value(asset, as_of, price, price)
 
         # Also since cash probably never gets a price we need to force cash evaluation as well
-        self.update_position_value(CASH, as_of + timedelta(milliseconds=1), 1.0, 1.0)
+        self.update_position_value(CASH, as_of, 1.0, 1.0)
 
     def update_position_value(self, asset, as_of, bid, ask):
         pos = self.positions.get(asset, None)
@@ -90,5 +91,7 @@ class MemPortfolioActor(AbstractPortfolioActor):
             raise NotImplemented
 
     def get_portfolio_timeseries(self, as_of: datetime | None = None) -> pd.DataFrame:
-        if as_of is None: as_of = datetime.max
-        return pd.DataFrame(self.portfolio_history).sort_index()
+        if as_of is None or as_of >= self.portfolio_history[-1].name:
+            return pd.DataFrame(self.portfolio_history).sort_index()
+        else:
+            return pd.DataFrame([s for s in self.portfolio_history if s.name <= as_of]).sort_index()
