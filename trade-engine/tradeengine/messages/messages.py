@@ -59,6 +59,11 @@ class NewOrderMessage(Message):
     order: Order
 
 
+@dataclass(frozen=True, eq=True)
+class AllExecutedOrderHistory(Message):
+    pass
+
+
 
 
 

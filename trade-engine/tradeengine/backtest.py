@@ -8,7 +8,8 @@ import pykka
 
 from tradeengine.actors.memory import PandasQuoteProviderActor
 from tradeengine.dto.dataflow import Asset, Order
-from tradeengine.messages import NewOrderMessage, ReplayAllMarketDataMessage
+from tradeengine.messages import NewOrderMessage, ReplayAllMarketDataMessage, PortfolioPerformanceMessage, \
+    AllExecutedOrderHistory
 
 LOG = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ def backtest_strategy(
         signal: Dict[Asset, pd.Series],  # pass a series of [pd.Timestamp, Dict[Type[Order], Dict[str, Any]]]]
         market_data_price_columns: List = ("Open", "High", "Low", "Close"),
         market_data_interval: timedelta = timedelta(seconds=1),
+        resample_rule='D',
         shutdown_on_complete: bool = True,
 ):
     if not isinstance(market_data_price_columns, list):
@@ -49,7 +51,7 @@ def backtest_strategy(
                             order_args[oa] = val.to_pydatetime()
 
                     # finally we can send of the order to the orderbook actor
-                    order = order_type(asset, **{**order_args, "valid_from": valid_from})
+                    order = order_type(asset, **{"size": None, **order_args, "valid_from": valid_from})
                     LOG.debug(f"place order: {order}")
                     order_futures.append(orderbook_actor.ask(NewOrderMessage(order), block=False))
 
@@ -60,7 +62,15 @@ def backtest_strategy(
         LOG.debug("full orderbook", orderbook_actor.proxy().get_full_orderbook().get())
 
         LOG.info("Replay Market Data")
-        market_data_actor.ask(ReplayAllMarketDataMessage())
+        used_marketdata_frame = market_data_actor.ask(ReplayAllMarketDataMessage())
+
+        LOG.info("Ask for executed orders")
+        executed_orders_frame = orderbook_actor.ask(AllExecutedOrderHistory())
+
+        LOG.info("Ask for strategy performance")
+        portfolio_result_frames = portfolio_actor.ask(PortfolioPerformanceMessage(resample_rule=resample_rule))
+
+        return used_marketdata_frame, executed_orders_frame, *portfolio_result_frames
     finally:
         if shutdown_on_complete:
             LOG.info(f"shutting down actors: {portfolio_actor}, {orderbook_actor}, {market_data_actor}")

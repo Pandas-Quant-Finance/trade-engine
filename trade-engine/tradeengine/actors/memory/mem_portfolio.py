@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
@@ -39,12 +39,6 @@ class MemPortfolioActor(AbstractPortfolioActor):
         # every trade as a cost aspect as in cash
         cost = -quantity * price - fee
 
-        # if this is the first non-cash position, we update the funding date (for pure convenience)
-        if len(self.positions) <= 1:
-            self.positions[CASH].time = as_of - timedelta(days=1)
-            self.portfolio_history[0].name = self.positions[CASH].time
-            self.portfolio_history[0].time = self.positions[CASH].time
-
         # update all current positions
         self.positions[CASH] += (cost, 1.0)
         self.positions[asset] = self.positions.get(
@@ -67,14 +61,8 @@ class MemPortfolioActor(AbstractPortfolioActor):
         pos.value = pos.quantity * ask if pos.quantity < 0 else pos.quantity * bid
         pos.time = as_of
 
-        self.portfolio_history.append(
-            pd.Series(
-                dict(
-                    asset=pos.asset, time=pos.time, quantity=pos.quantity, cost_basis=pos.cost_basis, value=pos.value
-                ),
-                name=as_of
-            )
-        )
+        s = pd.Series(dict(asset=pos.asset, time=pos.time, quantity=pos.quantity, cost_basis=pos.cost_basis, value=pos.value))
+        self.portfolio_history.append(s)
 
     def get_portfolio_value(self, as_of: datetime | None = None) -> PortfolioValue:
         if as_of is None: as_of = datetime.max
@@ -91,7 +79,14 @@ class MemPortfolioActor(AbstractPortfolioActor):
             raise NotImplemented
 
     def get_portfolio_timeseries(self, as_of: datetime | None = None) -> pd.DataFrame:
-        if as_of is None or as_of >= self.portfolio_history[-1].name:
-            return pd.DataFrame(self.portfolio_history).sort_index()
+        hist = self.portfolio_history
+        if as_of is None or as_of >= hist[-1].time:
+            df = pd.DataFrame(hist)
         else:
-            return pd.DataFrame([s for s in self.portfolio_history if s.name <= as_of]).sort_index()
+            df = pd.DataFrame([s for s in hist if s.time <= as_of])
+
+        # if this is the first non-cash position, we update the funding date (for pure convenience)
+        if len(self.positions) > 1:
+            df.time[0] = df.time[1] - timedelta(days=1)
+
+        return df

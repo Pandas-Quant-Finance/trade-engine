@@ -100,7 +100,7 @@ class TestPortfolioActor:
             ])
         )
         nt.assert_array_almost_equal(
-            hist[1]['performance'].values,
+            hist[-1]['performance'].values,
             np.array([1, 1, 11, -9, 1])
         )
 

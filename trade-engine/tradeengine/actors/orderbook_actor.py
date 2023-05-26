@@ -5,13 +5,13 @@ from functools import partial
 from typing import Any, List, Tuple
 
 import numpy as np
+import pandas as pd
 import pykka
 
 from tradeengine.dto.dataflow import OrderTypes, PortfolioValue, Order, QuantityOrder, \
     Asset, ExpectedExecutionPrice
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData, PortfolioValueMessage, \
-    NewPositionMessage, NewOrderMessage
-
+    NewPositionMessage, NewOrderMessage, AllExecutedOrderHistory
 
 RELATIVE_ORDER_TYPES = (OrderTypes.TARGET_QUANTITY, OrderTypes.PERCENT, OrderTypes.TARGET_WEIGHT, OrderTypes.CLOSE)
 LOG = logging.getLogger(__name__)
@@ -46,6 +46,8 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
             # if message is PlaceOrder, we store the order in the orderbook
             case NewOrderMessage(order):
                 return self.place_order(order)
+            case AllExecutedOrderHistory():
+                return self.get_all_executed_orders()
 
             # when a new quote messages comes in whe need to check if an order is executed or can be evicted.
             # if an order can be executed and the quantity is not clear (weight/percentage/amount orders)
@@ -92,7 +94,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         # we only have one net order for one asset from one asset's price update which we execute now.
         # and then tell the portfolio actor about it
         expected_execution_price = expected_price.evaluate_price(np.sign(execute_quantity_order.size), order.valid_from, order.limit)
-        quantity, price, fee = self._execute_order(execute_quantity_order, expected_execution_price, pv)
+        quantity, price, fee = self._execute_order(execute_quantity_order, as_of, expected_execution_price, pv)
 
         if quantity is not None:
             self.portfolio_actor.tell(NewPositionMessage(asset, as_of, quantity, price, fee))
@@ -111,7 +113,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         raise NotImplemented
 
     @abstractmethod
-    def _execute_order(self, order: QuantityOrder, expected_price: float, pv: PortfolioValue | None) -> Tuple[float | None, float | None, float | None]:
+    def _execute_order(self, order: QuantityOrder, expected_execution_time: datetime, expected_price: float, pv: PortfolioValue | None) -> Tuple[float | None, float | None, float | None]:
         # delete fully filled orders from the orderbook and put it to the orderbook_history
         # return the definitive traded quantity, price and fee, in case we only want to execute orders which a
         # strong enough portfolio impact (>= x% of portfolio value) we can abort the execution and return None values.
@@ -121,6 +123,10 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
     def _evict_orders(self, asset: Asset, as_of: datetime) -> int:
         # delete orders where valid_until < as_of from the orderbook and put it to the orderbook_history
         # returns the number of evicted orders
+        raise NotImplemented
+
+    @abstractmethod
+    def get_all_executed_orders(self) -> pd.DataFrame:
         raise NotImplemented
 
 

@@ -40,15 +40,23 @@ class TestActorTradeEngine(TestCase):
 
     def test_foo(self):
         strategy_id: str = str(uuid.uuid4())
-        portfolio_actor = MemPortfolioActor.start()
+        portfolio_actor = MemPortfolioActor.start(funding=100)
         orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id)
 
-        backtest_strategy(
+        md, orders, val, weight, performance = backtest_strategy(
             orderbook_actor,
             portfolio_actor,
             FRAMES,
-            sample_strategy(),
+            sample_strategy('long', slow=30, fast=10),
             # shutdown_on_complete=False
         )
 
-        # print(orderbook_actor.proxy().get_full_orderbook())
+        print(performance.columns)
+        print(performance.tail())
+
+        file = '../notebooks/strategy.hdf5'
+        md.to_hdf(file, key='MD')
+        orders.to_hdf(file, key='ORDERS')
+        val.to_hdf(file, key='POS_VAL')
+        weight.to_hdf(file, key='POS_WGT')
+        performance.to_hdf(file, key='PORTFOLIO')

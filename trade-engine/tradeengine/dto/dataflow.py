@@ -10,6 +10,9 @@ import numpy as np
 class Asset:
     symbol: Any
 
+    def __lt__(self, other):
+        return self.symbol < other.symbol
+
 
 @dataclass(frozen=True, eq=True)
 class PositionValue:

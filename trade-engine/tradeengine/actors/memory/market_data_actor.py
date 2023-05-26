@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import pandas as pd
 import pykka
@@ -35,7 +35,7 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
     def on_stop(self) -> None:
         LOG.debug(f"stopped market data actor {self}")
 
-    def replay_all_market_data(self):
+    def replay_all_market_data(self) -> pd.DataFrame:
         # IMPORTANT always update the portfolio first!
         #self.portfolio_actor.ask()  # ask to be sure portfolio has all data
         #self.orderbook_actor.tell()
@@ -53,3 +53,5 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
                 # use ask to be sure portfolio has all data processed before we execute orders
                 self.portfolio_actor.ask(message)
                 self.orderbook_actor.ask(message, block=self.blocking)
+
+        return self.dataframe

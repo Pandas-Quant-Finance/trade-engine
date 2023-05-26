@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Tuple
 
+import pandas as pd
 import pykka
 
 from tradeengine.messages.messages import ReplayAllMarketDataMessage, \
@@ -51,8 +52,8 @@ class AbstractQuoteProviderActor(pykka.ThreadingActor):
                 return
 
             case ReplayAllMarketDataMessage():
-                self.replay_all_market_data()
+                return self.replay_all_market_data()
 
-    def replay_all_market_data(self):
+    def replay_all_market_data(self) -> pd.DataFrame:
         raise NotImplemented
 

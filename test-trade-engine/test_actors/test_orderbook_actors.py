@@ -74,5 +74,5 @@ class TestOrderBookActors(TestCase):
         ob.place_order(PercentOrder(AAPL, 1, datetime.now()))
         print("   3. ", ob.get_full_orderbook())
 
-
+        print(ob.get_all_executed_orders())
 

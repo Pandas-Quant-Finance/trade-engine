@@ -2,12 +2,13 @@ import logging
 from datetime import timedelta, datetime
 from typing import List, Tuple, Callable
 
+import pandas as pd
 import pykka
 from sqlalchemy import Engine, text, select, func, update, delete, and_, or_, between, case, null
 from sqlalchemy.orm import Session
 
 from tradeengine.actors.orderbook_actor import AbstractOrderbookActor
-from tradeengine.actors.sql.persitency import OrderBookBase, OrderBook
+from tradeengine.actors.sql.persitency import OrderBookBase, OrderBook, OrderBookHistory
 from tradeengine.dto.dataflow import Order, QuantityOrder, PortfolioValue, OrderTypes, Asset, CloseOrder, PercentOrder, \
     TargetQuantityOrder, TargetWeightOrder, ExpectedExecutionPrice
 
@@ -76,7 +77,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
                     .where((OrderBook.strategy_id == self.strategy_id) & (OrderBook.valid_until < as_of))
             ):
                 session.delete(order)
-                session.add(order.to_history(0, None))
+                session.add(order.to_history())
                 evicted += 1
 
             session.commit()
@@ -101,7 +102,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             sql = _get_executable_orders_from_orderbook_sql(self.strategy_id, asset, as_of, high, low)
             return [map_order(o) for o in session.scalars(sql)]
 
-    def _execute_order(self, order: QuantityOrder, expected_price: float, pv: PortfolioValue | None) -> Tuple[float | None, float | None, float | None]:
+    def _execute_order(self, order: QuantityOrder, expected_execution_time: datetime, expected_price: float, pv: PortfolioValue | None) -> Tuple[float | None, float | None, float | None]:
         # delete fully filled orders from the orderbook and put it to the orderbook_history
         # return the definitive traded quantity, price and fee, in case we only want to execute orders which a
         # strong enough portfolio impact (>= x% of portfolio value) we can abort the execution and return None values.
@@ -113,7 +114,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
                     .where((OrderBook.strategy_id == self.strategy_id) & (OrderBook.id == order.id))
             ):
                 session.delete(o)
-                session.add(o.to_history(1, expected_price))
+                session.add(o.to_history(order, expected_execution_time, expected_price))
 
             session.commit()
 
@@ -126,6 +127,17 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             return None, None, None
 
         return order.size, price, fee
+
+    def get_all_executed_orders(self) -> pd.DataFrame:
+        with Session(self.engine) as session:
+            return pd.read_sql(
+                session\
+                    .query(OrderBookHistory)\
+                        .filter((OrderBookHistory.strategy_id == self.strategy_id) & (OrderBookHistory.status == 1))\
+                        .order_by(OrderBookHistory.valid_from, OrderBookHistory.asset)\
+                    .statement,
+                session.bind,
+            )
 
 
 def _get_executable_orders_from_orderbook_sql(strategy_id, asset, as_of, low, high):

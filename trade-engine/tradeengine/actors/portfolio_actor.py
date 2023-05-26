@@ -5,6 +5,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import Any, Tuple
 
+import numpy as np
 import pandas as pd
 import pykka
 
@@ -61,20 +62,23 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
             case _:
                 raise ValueError(f"Unknown Message {message}")
 
-    def get_performance_history(self, as_of: datetime = None, resample_rule=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def get_performance_history(self, as_of: datetime = None, resample_rule=None) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         if as_of is None: as_of = datetime.max
 
-        df = self.get_portfolio_timeseries(as_of).pivot(index='time', columns='asset', values='value').ffill()
+        df = self.get_portfolio_timeseries(as_of)
+        df_pos_val = df.pivot_table(index='time', columns='asset', values='value', aggfunc='last').sort_index().ffill()
 
         if resample_rule is not None:
-            df.resample(resample_rule, convention='e').last()
+            df_pos_val.resample(resample_rule, convention='e').last()
 
-        df2 = pd.DataFrame({}, index=df.index)
-        df2['value'] = df.fillna(0).sum(axis=1)
-        df2['return'] = df2['value'].pct_change().fillna(0)
-        df2['performance'] = (df2['return'] + 1).cumprod()
+        df_pos_weight = np.sum(df_pos_val.values, axis=1, keepdims=True) / df_pos_val
 
-        return df, df2
+        df_portfolio = pd.DataFrame({}, index=df_pos_val.index)
+        df_portfolio['value'] = df_pos_val.fillna(0).sum(axis=1)
+        df_portfolio['return'] = df_portfolio['value'].pct_change().fillna(0)
+        df_portfolio['performance'] = (df_portfolio['return'] + 1).cumprod()
+
+        return df_pos_val, df_pos_weight, df_portfolio
 
     @abstractmethod
     def get_portfolio_timeseries(self, as_of: datetime | None = None) -> pd.DataFrame:
