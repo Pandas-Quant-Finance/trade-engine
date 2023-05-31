@@ -31,15 +31,12 @@ class Backtest:
     def plot(self):
         from plotly.subplots import make_subplots
 
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.7, 0.3])
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3], subplot_titles=("Performance", "Position Changes"))
         traces = self.get_plot_objects()
 
         fig.add_traces(traces["portfolio_performance"], rows=1, cols=1)
         fig.add_traces(traces["market_data"], rows=1, cols=1)
         fig.add_traces(traces["signal"], rows=1, cols=1)
-        #fig.add_trace(traces["market_data"][0], row=1, col=1)
-        #fig.add_trace(traces["market_data"][1], row=2, col=1)
-        #fig.add_traces(traces["signal"], row=1, col=1)
         fig.add_traces(traces["executed_orders"], rows=2, cols=1)
 
         return fig
@@ -89,7 +86,7 @@ class Backtest:
                 trace_signal = go.Scatter(x=xy["x"], y=xy["y"], name=symbol, marker=dict(color=color, symbol=marker, size=10), legendgroup=symbol, showlegend=False, mode='markers')
                 traces["signal"].append(trace_signal)
 
-            # plot executed orders # TODO stack go.Bar(x=animals, y=[20, 14, 23])
+            # plot executed orders
             trace_executed_order = go.Bar(x=orders.index, y=orders[symbol].values, name=symbol, marker=dict(color=color), legendgroup=symbol, showlegend=False)
             traces["executed_orders"].append(trace_executed_order)
 
@@ -210,8 +207,6 @@ def backtest_strategy(
 
 # FIXME
 #  use Asset object in orderbook query
-#  add the original size to the order history
-#  add title to subplots (Performance, Position Changes)
 #  add pretty html dataframe
 #  add/plot position values
 #  plot cash position as a matter of leverage

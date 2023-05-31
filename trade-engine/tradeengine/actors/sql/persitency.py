@@ -36,6 +36,7 @@ class OrderBook(OrderBookBase):
             stop_limit=self.stop_limit,
             valid_from=self.valid_from,
             valid_until=self.valid_until,
+            size=self.qty,
             qty=None if order is None else order.size,
             status=0 if order is None else 1,
             execute_price=execute_price,
@@ -54,6 +55,7 @@ class OrderBookHistory(OrderBookBase):
     stop_limit: Mapped[float] = mapped_column(nullable=True)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
+    size: Mapped[float] = mapped_column(nullable=True)
     qty: Mapped[float] = mapped_column(nullable=True)
     status: Mapped[int] = mapped_column()
     execute_price: Mapped[float] = mapped_column(nullable=True)

@@ -5,6 +5,7 @@ yfinance
 plotly
 dash
 datashader
+dash_bootstrap_components
 quantstats[stats]
 sqlalchemy>=2.0
 ddt[dev]
