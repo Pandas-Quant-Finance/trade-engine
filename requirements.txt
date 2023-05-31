@@ -2,6 +2,9 @@ pykka
 tables
 pandas
 yfinance
+plotly
+dash
+datashader
 quantstats[stats]
 sqlalchemy>=2.0
 ddt[dev]

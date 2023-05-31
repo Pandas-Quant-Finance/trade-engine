@@ -8,7 +8,7 @@ import pandas as pd
 import pykka
 from sqlalchemy import create_engine, StaticPool
 
-from testutils.data import FRAMES
+from testutils.data import ALL_MD_FRAMES, AAPL_MD_FRAMES
 from testutils.database import get_sqlite_engine
 from testutils.trading import sample_strategy
 from tradeengine.actors.memory import PandasQuoteProviderActor, MemPortfolioActor
@@ -24,7 +24,7 @@ class TestActorTradeEngine(TestCase):
     def test_simple_strategy(self):
         portfolio_actor = SQLPortfolioActor.start(get_sqlite_engine(False))
         orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False))
-        market_actor = PandasQuoteProviderActor.start(portfolio_actor, orderbook_actor, FRAMES, ["Open", "High", "Low", "Close"])
+        market_actor = PandasQuoteProviderActor.start(portfolio_actor, orderbook_actor, ALL_MD_FRAMES, ["Open", "High", "Low", "Close"])
 
         try:
             # implement trading system
@@ -38,25 +38,27 @@ class TestActorTradeEngine(TestCase):
             # shutdown threadpool
             pykka.ActorRegistry.stop_all()
 
-    def test_foo(self):
+    def test_long_aapl(self):
         strategy_id: str = str(uuid.uuid4())
         portfolio_actor = MemPortfolioActor.start(funding=100)
         orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id)
+        frames = AAPL_MD_FRAMES.copy()
 
-        md, orders, val, weight, performance = backtest_strategy(
+        strategy = sample_strategy(frames, 'long', slow=30, fast=10, signal_only=False)
+        sma_signal_info = {k: v[["ma_fast", "ma_slow"]] for k, v in strategy.items()}
+        signal = {k: v["order"] for k, v in strategy.items()}
+
+        backtest = backtest_strategy(
             orderbook_actor,
             portfolio_actor,
-            FRAMES,
-            sample_strategy('long', slow=30, fast=10),
+            frames,
+            signal,
+            market_data_extra_data=sma_signal_info
             # shutdown_on_complete=False
         )
 
-        print(performance.columns)
-        print(performance.tail())
+        print(backtest.porfolio_performance.columns)
+        print(backtest.porfolio_performance.tail())
 
-        file = '../notebooks/strategy.hdf5'
-        md.to_hdf(file, key='MD')
-        orders.to_hdf(file, key='ORDERS')
-        val.to_hdf(file, key='POS_VAL')
-        weight.to_hdf(file, key='POS_WGT')
-        performance.to_hdf(file, key='PORTFOLIO')
+        file = '../notebooks/strategy-long-aapl.hdf5'
+        backtest.save(file)

@@ -61,7 +61,7 @@ class NewOrderMessage(Message):
 
 @dataclass(frozen=True, eq=True)
 class AllExecutedOrderHistory(Message):
-    pass
+    include_evicted: bool = False
 
 
 

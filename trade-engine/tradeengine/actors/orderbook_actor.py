@@ -46,8 +46,8 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
             # if message is PlaceOrder, we store the order in the orderbook
             case NewOrderMessage(order):
                 return self.place_order(order)
-            case AllExecutedOrderHistory():
-                return self.get_all_executed_orders()
+            case AllExecutedOrderHistory(include_evicted):
+                return self.get_all_executed_orders(include_evicted)
 
             # when a new quote messages comes in whe need to check if an order is executed or can be evicted.
             # if an order can be executed and the quantity is not clear (weight/percentage/amount orders)
@@ -126,7 +126,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         raise NotImplemented
 
     @abstractmethod
-    def get_all_executed_orders(self) -> pd.DataFrame:
+    def get_all_executed_orders(self, include_evicted) -> pd.DataFrame:
         raise NotImplemented
 
 

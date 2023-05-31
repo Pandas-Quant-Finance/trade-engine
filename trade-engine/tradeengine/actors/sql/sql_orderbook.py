@@ -128,12 +128,15 @@ class SQLOrderbookActor(AbstractOrderbookActor):
 
         return order.size, price, fee
 
-    def get_all_executed_orders(self) -> pd.DataFrame:
+    def get_all_executed_orders(self, include_evicted) -> pd.DataFrame:
+        filer = (OrderBookHistory.strategy_id == self.strategy_id)\
+            if include_evicted else ((OrderBookHistory.strategy_id == self.strategy_id) & (OrderBookHistory.status == 1))
+
         with Session(self.engine) as session:
             return pd.read_sql(
                 session\
                     .query(OrderBookHistory)\
-                        .filter((OrderBookHistory.strategy_id == self.strategy_id) & (OrderBookHistory.status == 1))\
+                        .filter(filer)\
                         .order_by(OrderBookHistory.valid_from, OrderBookHistory.asset)\
                     .statement,
                 session.bind,

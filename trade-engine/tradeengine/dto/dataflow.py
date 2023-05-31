@@ -1,9 +1,11 @@
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, Tuple
 
 import numpy as np
+import pandas as pd
 
 
 @dataclass(frozen=True, eq=True)
@@ -12,6 +14,12 @@ class Asset:
 
     def __lt__(self, other):
         return self.symbol < other.symbol
+
+    def __str__(self):
+        return f"{self.symbol}"
+
+    def __hash__(self):
+        return int(hashlib.md5(str(self.symbol).encode("utf-8")).hexdigest(), 16)
 
 
 @dataclass(frozen=True, eq=True)
@@ -123,6 +131,10 @@ class Order:
         # by default the order is only valid until the end of the trading day
         return self.valid_until or (self.valid_from + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
+    @property
+    def marker(self):
+        return 'circle'
+
 
 @dataclass(frozen=True, eq=True)
 class QuantityOrder(Order):
@@ -136,15 +148,23 @@ class QuantityOrder(Order):
         assert self.asset == other.asset, f"can not add orders of different assets {self.asset}, {other.asset}"
         return QuantityOrder(self.asset, self.size + other.size, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
+    @property
+    def marker(self):
+        return 'triangle-up' if self.size > 0 else 'triangle-down'
+
 
 @dataclass(frozen=True, eq=True)
 class CloseOrder(Order):
-
+    size = None
     type = OrderTypes.CLOSE
 
     def to_quantity(self, pv: PortfolioValue, price: ExpectedExecutionPrice) -> 'QuantityOrder':
         q = -pv.positions[self.asset].qty if pv is not None and self.asset in pv.positions else 0
         return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+
+    @property
+    def marker(self):
+        return 'circle'
 
 
 @dataclass(frozen=True, eq=True)
@@ -157,6 +177,10 @@ class PercentOrder(Order):
         price = price.evaluate_price(1, self.valid_from, self.limit)
         q = max(self.size, 0) * max(pv.cash, 0) / price if pv is not None else 0
         return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+
+    @property
+    def marker(self):
+        return 'triangle-up-dot'
 
 
 @dataclass(frozen=True, eq=True)
@@ -171,6 +195,10 @@ class TargetQuantityOrder(Order):
             q = self.size
 
         return QuantityOrder(self.asset, q, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+
+    @property
+    def marker(self):
+        return 'x-thin'
 
 
 @dataclass(frozen=True, eq=True)
@@ -187,5 +215,10 @@ class TargetWeightOrder(Order):
         price = price.evaluate_price(np.sign(w), self.valid_from, self.limit)
         return QuantityOrder(self.asset, (pv.value() * w) / price, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
+    @property
+    def marker(self):
+        return 'circle-x'
 
+
+# SOME CONSTANTS
 CASH = Asset("$$$")
