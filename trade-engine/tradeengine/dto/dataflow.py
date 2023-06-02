@@ -89,7 +89,8 @@ class PortfolioValue:
     positions: Dict[Asset, PositionValue]
 
     def value(self):
-        return self.cash + sum([p.value for p in self.positions.values()])
+        # NOTE that cash is also a position! so we don't need to self.cash + ...
+        return sum([p.value for p in self.positions.values()])
 
 
 @dataclass(frozen=True, eq=True)
@@ -213,7 +214,8 @@ class TargetWeightOrder(Order):
             w = self.size
 
         price = price.evaluate_price(np.sign(w), self.valid_from, self.limit)
-        return QuantityOrder(self.asset, (pv.value() * w) / price, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
+        qty = (pv.value() * w) / price
+        return QuantityOrder(self.asset, qty, self.valid_from, self.limit, self.stop_limit, self.valid_until, self.id)
 
     @property
     def marker(self):
