@@ -2,3 +2,5 @@
 .idea
 scratch*
 .*_cache/
+**/__pycache__/
+
