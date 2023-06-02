@@ -122,13 +122,15 @@ class PlotBacktest(object):
                 traces["signal"].append(trace_signal)
 
             # plot executed orders
-            trace_executed_order = go.Bar(x=orders.index, y=orders[symbol].values, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
-            traces["executed_orders"].append(trace_executed_order)
+            if symbol in orders.columns:
+                trace_executed_order = go.Bar(x=orders.index, y=orders[symbol].values, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
+                traces["executed_orders"].append(trace_executed_order)
 
             # position values
-            pv = self.backtest.position_values[asset]
-            position_value = go.Bar(x=pv.index, y=pv, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
-            traces["position_values"].append(position_value)
+            if symbol in self.backtest.position_values.columns:
+                pv = self.backtest.position_values[asset]
+                position_value = go.Bar(x=pv.index, y=pv, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
+                traces["position_values"].append(position_value)
 
         # return all traces:
         return traces

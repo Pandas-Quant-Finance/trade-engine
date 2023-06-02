@@ -1,3 +1,4 @@
+import datetime
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
@@ -96,7 +97,7 @@ def backtest_strategy(
                             order_args[oa] = val.to_pydatetime()
 
                     # finally we can send of the order to the orderbook actor
-                    order = order_type(asset, **{"size": None, "valid_until": next_tst, **order_args, "valid_from": valid_from})
+                    order = order_type(asset, **{"size": None, "valid_until": next_tst if not pd.isna(next_tst) else datetime.datetime.max, **order_args, "valid_from": valid_from})
                     LOG.debug(f"place order: {order}")
                     order_futures.append(orderbook_actor.ask(NewOrderMessage(order), block=False))
                     all_evaluated_signals[asset]["value"][-1].append(order)
@@ -119,6 +120,8 @@ def backtest_strategy(
         # add extra info to market data
         if market_data_extra_data is not None:
             market_data_extra_data = pd.concat(market_data_extra_data.values(), keys=market_data_extra_data.keys(), axis=1, sort=True)
+        else:
+            market_data_extra_data = pd.DataFrame({})
 
         # make signals dataframe
         trading_signals = pd.concat([pd.Series(s["value"], index=s["index"]) for s in all_evaluated_signals.values()], keys=all_evaluated_signals.keys(), axis=1, sort=True)

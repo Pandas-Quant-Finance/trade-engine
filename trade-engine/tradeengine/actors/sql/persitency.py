@@ -27,7 +27,7 @@ class OrderBook(OrderBookBase):
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     qty: Mapped[float] = mapped_column(nullable=True)
 
-    def to_history(self, order: QuantityOrder = None, execute_time: datetime = None, execute_price: float = None):
+    def to_history(self, order: QuantityOrder = None, execute_time: datetime = None, execute_price: float = None, status: int = None):
         return OrderBookHistory(
             strategy_id=self.strategy_id,
             order_type=self.order_type,
@@ -38,7 +38,7 @@ class OrderBook(OrderBookBase):
             valid_until=self.valid_until,
             size=self.qty,
             qty=None if order is None else order.size,
-            status=0 if order is None else 1,
+            status=status if status is not None else 0 if order is None else 1,
             execute_price=execute_price,
             execute_time=execute_time,
             execute_value=None if order is None else (execute_price * order.size),
@@ -61,6 +61,7 @@ class OrderBookHistory(OrderBookBase):
     execute_price: Mapped[float] = mapped_column(nullable=True)
     execute_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     execute_value: Mapped[float] = mapped_column(nullable=True)
+
 
 class PortfolioBase(DeclarativeBase):
 
