@@ -39,3 +39,60 @@ subscribing and un-subscribing to the needed market data feeds.
 For backtest all quotes have to be emitted chronologically first and then for each asset.
 
 
+### Backtesting
+For backtesting in order to guarantee no lookahead bias the `backtest` API is recommended.
+The backtest API need a Market Data Actor which is capable to respond to the
+`ReplayAllMarketDataMessage` message. The Actor has to be strict chronologically and send
+market data for one asset after the other for the same timestamp.
+
+```python
+import pandas as pd
+from sqlalchemy import create_engine, StaticPool
+from tradeengine.actors.memory import MemPortfolioActor
+from tradeengine.actors.sql import SQLOrderbookActor
+from tradeengine.backtest import backtest_strategy
+from tradeengine.dto import Asset, PercentOrder
+import yfinance as yf
+
+aapl = yf.Ticker("AAPL").history("max")
+market_data = {
+    Asset("AAPL"): aapl
+}
+buy_and_hold_signal = {
+    Asset("AAPL"): pd.Series([[{PercentOrder: dict(size=1.0)}]] + [[]] * (len(aapl) - 1), index=aapl.index)
+}
+
+portfolio_actor = MemPortfolioActor.start(funding=100)
+backtest = backtest_strategy(
+    SQLOrderbookActor.start(
+        portfolio_actor,
+        create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool),
+        strategy_id='my-strategy'
+    ),
+    portfolio_actor,
+    market_data,
+    buy_and_hold_signal,
+)
+```
+
+The `backtest_strategy` returns a `Backtest` object which is just a dataclass holding a bunch
+of pandas DataFrames:
+
+```
+@dataclass(frozen=True, eq=True)
+class Backtest:
+    market_data: pd.DataFrame
+    signals: pd.DataFrame
+    orders: pd.DataFrame
+    position_values: pd.DataFrame
+    position_weights:pd.DataFrame
+    porfolio_performance: pd.DataFrame
+    market_data_extra_data: pd.DataFrame = pd.DataFrame({})
+```
+
+There are some examples in the [test_actor_system](./test-trade-engine/test_actor_system) 
+module.
+
+### Production
+In order to take strategies into production you need to subclass all Actors to fit
+your brokers APIs.

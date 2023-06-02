@@ -71,7 +71,7 @@ class AbstractPortfolioActor(pykka.ThreadingActor):
         if resample_rule is not None:
             df_pos_val.resample(resample_rule, convention='e').last()
 
-        df_pos_weight = np.sum(df_pos_val.values, axis=1, keepdims=True) / df_pos_val
+        df_pos_weight = df_pos_val / np.sum(df_pos_val.values, axis=1, keepdims=True)
 
         df_portfolio = pd.DataFrame({}, index=df_pos_val.index)
         df_portfolio['value'] = df_pos_val.fillna(0).sum(axis=1)

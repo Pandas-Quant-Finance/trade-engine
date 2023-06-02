@@ -3,7 +3,7 @@ from typing import Dict, Literal
 import numpy as np
 import pandas as pd
 
-from testutils.data import ALL_MD_FRAMES
+from testutils.data import AAPL_MSFT_MD_FRAMES
 from tradeengine.dto.dataflow import Asset, TargetWeightOrder, PercentOrder, CloseOrder
 
 
@@ -16,7 +16,7 @@ def sample_strategy(frames: Dict[Asset, pd.DataFrame], stragegy: Literal['long',
         df["ma_fast"] = df["Close"].rolling(fast).mean()
         df["ma_slow"] = df["Close"].rolling(slow).mean()
         df["signal"] = df["ma_fast"] - df["ma_slow"]
-        df["signal"] = df["signal"].rolling(2).apply(lambda x: (np.sign(x[0]) != np.sign(x[1])) * np.sign(x[1]))
+        df["signal"] = df["signal"].rolling(2).apply(lambda x: (np.sign(x[0]) != np.sign(x[1])) * np.sign(x[1])).fillna(0)
 
         if stragegy == 'swing':
             df["order"] = df["signal"].apply(lambda x: {TargetWeightOrder: dict(size=size if x > 0 else -size)} if x != 0 else None)
@@ -31,4 +31,5 @@ def sample_strategy(frames: Dict[Asset, pd.DataFrame], stragegy: Literal['long',
 
 
 def one_over_n() -> Dict[Asset, pd.DataFrame]:
+    # TODO
     pass
