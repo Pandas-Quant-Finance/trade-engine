@@ -90,6 +90,10 @@ class Backtest:
     market_data_extra_data: pd.DataFrame = pd.DataFrame({})
 ```
 
+In order to get some plots you can use the `dash` app or implement your own plots from the dataframes
+provided.
+
+
 There are some examples in the [test_actor_system](./test-trade-engine/test_actor_system) 
 module.
 

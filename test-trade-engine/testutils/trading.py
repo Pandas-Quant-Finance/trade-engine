@@ -30,6 +30,11 @@ def sample_strategy(frames: Dict[Asset, pd.DataFrame], stragegy: Literal['long',
     return result
 
 
-def one_over_n() -> Dict[Asset, pd.DataFrame]:
-    # TODO
-    pass
+def one_over_n(frames: Dict[Asset, pd.DataFrame],) -> Dict[Asset, pd.Series | pd.DataFrame]:
+    size = 0.98 / len(frames)
+    result = {}
+
+    for a, f in frames.items():
+        result[a] = pd.Series(size, index=f.index).apply(lambda x: {TargetWeightOrder: dict(size=x)})
+
+    return result

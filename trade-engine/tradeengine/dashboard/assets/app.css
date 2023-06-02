@@ -1,0 +1,13 @@
+body {
+    width: 100%;
+}
+
+.row {
+    width: 100%;
+}
+
+.dash-table-container {
+    overflow-x: scroll;
+    padding: 10px;
+    margin-left: 10px;
+}

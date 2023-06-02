@@ -107,6 +107,12 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         # return the definitive traded quantity, price and fee, in case we only want to execute orders which a
         # strong enough portfolio impact (>= x% of portfolio value) we can abort the execution and return None values.
 
+        price = expected_price * (1 + self.slippage)
+        impact = (order.size * price) / pv.value() if pv is not None else 0
+        # has_impact = pv is not None and 0 < self.relative_order_min_impact <= impact  # FIXME doesnt work, we would need to view all trades of the same date
+        has_impact = True
+        fee = self.fee_calculator(order.size, price)
+
         with Session(self.engine) as session:
             # later we may want to implement partial execution, for now we execute everything as is and move to history
             for o in session.scalars(
@@ -114,19 +120,11 @@ class SQLOrderbookActor(AbstractOrderbookActor):
                     .where((OrderBook.strategy_id == self.strategy_id) & (OrderBook.id == order.id))
             ):
                 session.delete(o)
-                session.add(o.to_history(order, expected_execution_time, expected_price))
+                session.add(o.to_history(order, expected_execution_time, expected_price, 2 if not has_impact else None))
 
             session.commit()
 
-        price = expected_price * (1 + self.slippage)
-        impact = (order.size * price) / pv.value() if pv is not None else 0
-        fee = self.fee_calculator(order.size, price)
-
-        if pv is not None and self.relative_order_min_impact > 0 and impact < self.relative_order_min_impact:
-            LOG.info(f"evicting non impactful order {impact} < {self.relative_order_min_impact}")
-            return None, None, None
-
-        return order.size, price, fee
+        return (order.size, price, fee) if has_impact else (None, None, None)
 
     def get_all_executed_orders(self, include_evicted) -> pd.DataFrame:
         filer = (OrderBookHistory.strategy_id == self.strategy_id)\
