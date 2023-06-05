@@ -4,7 +4,8 @@ from typing import Tuple
 from sqlalchemy import ForeignKey, String, DateTime, Integer, Enum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, composite
 
-from tradeengine.dto.dataflow import Asset, OrderTypes, _Position_addition, QuantityOrder
+from tradeengine.dto.position import PositionAdditionMixin
+from tradeengine.dto import Asset, OrderTypes, QuantityOrder
 
 
 # objects for SQL Alchemy
@@ -72,7 +73,7 @@ class PortfolioBase(DeclarativeBase):
 
 
 
-class PortfolioPosition(PortfolioBase, _Position_addition):
+class PortfolioPosition(PortfolioBase, PositionAdditionMixin):
     __tablename__ = 'portfolio_position'
     strategy_id: Mapped[str] = mapped_column(primary_key=True)
     asset: Mapped[Asset] = composite(mapped_column(String(255), primary_key=True))
@@ -82,7 +83,7 @@ class PortfolioPosition(PortfolioBase, _Position_addition):
     value: Mapped[float] = mapped_column()
 
     def __add__(self, other: Tuple[float, float]):
-        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price((self.quantity, self.cost_basis, 0), other)
+        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price(other)
         self.quantity = new_qty
         self.cost_basis = new_cost_basis
         self.value = new_value

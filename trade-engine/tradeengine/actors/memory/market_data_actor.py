@@ -7,7 +7,7 @@ import pandas as pd
 import pykka
 
 from tradeengine.actors.market_data_actor import AbstractQuoteProviderActor
-from tradeengine.dto.dataflow import Asset
+from tradeengine.dto import Asset
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData
 
 LOG = logging.getLogger(__name__)

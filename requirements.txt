@@ -4,6 +4,7 @@ pandas
 yfinance
 plotly
 dash
+dataclasses_json
 datashader
 dash_bootstrap_components
 quantstats[stats]

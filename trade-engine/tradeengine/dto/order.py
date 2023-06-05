@@ -1,96 +1,11 @@
-import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, Tuple
 
 import numpy as np
-import pandas as pd
 
-
-@dataclass(frozen=True, eq=True)
-class Asset:
-    symbol: Any
-
-    def __lt__(self, other):
-        return self.symbol < other.symbol
-
-    def __str__(self):
-        return f"{self.symbol}"
-
-    def __hash__(self):
-        return int(hashlib.md5(str(self.symbol).encode("utf-8")).hexdigest(), 16)
-
-
-@dataclass(frozen=True, eq=True)
-class PositionValue:
-    asset: Asset
-    qty: float
-    weight: float
-    value: float
-
-
-class _Position_addition(object):
-
-    def add_quantity_and_price(_, self, other: Tuple[float, float]):
-        self_quantity, self_cost_basis, self_pnl = self
-        other_qty, other_price = other
-        new_qty = self_quantity + other_qty
-        pnl = 0
-
-        if self_quantity > 0 and new_qty < self_quantity:
-            new_cost_basis = self_cost_basis if new_qty >= 0 else other_price
-            other_qty = min(-other_qty, self_quantity)
-            pnl = (other_qty * other_price) - (other_qty * self_cost_basis)
-        elif 0 < self_quantity < new_qty:
-            new_cost_basis = (self_cost_basis * self_quantity + other_price * other_qty) / (self_quantity + other_qty)
-        elif self_quantity < 0 and new_qty > self_quantity:
-            new_cost_basis = self_cost_basis if new_qty <= 0 else other_price
-            other_qty = min(other_qty, -self_quantity)
-            pnl = (other_qty * self_cost_basis) + (-other_qty * other_price)
-        elif 0 > self_quantity > new_qty:
-            new_cost_basis = (self_cost_basis * self_quantity + other_price * other_qty) / (self_quantity + other_qty)
-        else:
-            new_cost_basis = other_price
-
-        new_value = (new_qty * other_price)
-        new_pnl = pnl + self_pnl
-
-        return new_qty, new_cost_basis, new_value, new_pnl
-
-
-@dataclass(frozen=False, eq=True)
-class Position(_Position_addition):
-    asset: Asset
-    time: datetime
-    quantity: float
-    cost_basis: float
-    value: float
-    pnl: float = 0
-
-    def __add__(self, other: Tuple[float, float]):
-        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price((self.quantity, self.cost_basis, self.pnl), other)
-        self.quantity = new_qty
-        self.cost_basis = new_cost_basis
-        self.value = new_value
-        self.pnl = new_pnl
-        return self
-
-    def __sub__(self, other: Tuple[float, float]):
-        return self + (-other[0], other[1])
-
-    def __str__(self):
-        return f"{self.asset}, {self.quantity}, {self.cost_basis}, {self.pnl}"
-
-
-@dataclass(frozen=True, eq=True)
-class PortfolioValue:
-    cash: float
-    positions: Dict[Asset, PositionValue]
-
-    def value(self):
-        # NOTE that cash is also a position! so we don't need to self.cash + ...
-        return sum([p.value for p in self.positions.values()])
+from tradeengine.dto.asset import Asset
+from tradeengine.dto.portfolio import PortfolioValue
 
 
 @dataclass(frozen=True, eq=True)
@@ -222,5 +137,3 @@ class TargetWeightOrder(Order):
         return 'circle-x'
 
 
-# SOME CONSTANTS
-CASH = Asset("$$$")

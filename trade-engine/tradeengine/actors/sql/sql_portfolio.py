@@ -10,7 +10,10 @@ from sqlalchemy import Engine, text, select, func, update
 from sqlalchemy.orm import Session
 from tradeengine.actors.portfolio_actor import AbstractPortfolioActor
 from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioHistory, PortfolioPosition
-from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset, CASH
+from tradeengine.dto.position import PositionValue
+from tradeengine.dto.portfolio import PortfolioValue
+from tradeengine.dto.asset import CASH
+from tradeengine.dto import Asset
 
 LOG = logging.getLogger(__name__)
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)

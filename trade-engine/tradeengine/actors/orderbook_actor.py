@@ -8,8 +8,9 @@ import numpy as np
 import pandas as pd
 import pykka
 
-from tradeengine.dto.dataflow import OrderTypes, PortfolioValue, Order, QuantityOrder, \
-    Asset, ExpectedExecutionPrice
+from tradeengine.dto.portfolio import PortfolioValue
+from tradeengine.dto.order import Order, ExpectedExecutionPrice
+from tradeengine.dto import Asset, OrderTypes, QuantityOrder
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData, PortfolioValueMessage, \
     NewPositionMessage, NewOrderMessage, AllExecutedOrderHistory
 

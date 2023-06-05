@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from tradeengine.dto.dataflow import Order, Asset
+from tradeengine.dto.order import Order
+from tradeengine.dto import Asset
 
 
 @dataclass(frozen=True, eq=True)

@@ -1,4 +1,4 @@
-from tradeengine.dto.dataflow import CASH
+from tradeengine.dto.asset import CASH
 
 
 def get_color_for(asset):

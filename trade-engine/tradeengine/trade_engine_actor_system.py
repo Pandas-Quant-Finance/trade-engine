@@ -5,7 +5,7 @@ import pykka
 from tradeengine.actors.orderbook_actor import MemoryOrderbookActor
 from tradeengine.actors.portfolio_actor import SQLPortfolioActor
 from tradeengine.actors.market_data_actor import CSVQuoteProviderActor
-from tradeengine.dto.dataflow import Asset
+from tradeengine.dto import Asset
 from tradeengine.messages.messages import PercentOrderMessage
 
 if __name__ == "__main__":

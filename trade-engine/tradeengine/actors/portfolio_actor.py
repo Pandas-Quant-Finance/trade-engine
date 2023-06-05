@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pykka
 
-from tradeengine.dto.dataflow import PortfolioValue
+from tradeengine.dto.portfolio import PortfolioValue
 from tradeengine.messages.messages import PortfolioValueMessage, \
     NewBidAskMarketData, NewBarMarketData, NewPositionMessage, PortfolioPerformanceMessage
 

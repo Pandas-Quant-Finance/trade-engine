@@ -1,16 +1,17 @@
 import logging
-from datetime import timedelta, datetime
+from datetime import datetime
 from typing import List, Tuple, Callable
 
 import pandas as pd
 import pykka
-from sqlalchemy import Engine, text, select, func, update, delete, and_, or_, between, case, null
+from sqlalchemy import Engine, select, and_, or_, between, case, null
 from sqlalchemy.orm import Session
 
 from tradeengine.actors.orderbook_actor import AbstractOrderbookActor
 from tradeengine.actors.sql.persitency import OrderBookBase, OrderBook, OrderBookHistory
-from tradeengine.dto.dataflow import Order, QuantityOrder, PortfolioValue, OrderTypes, Asset, CloseOrder, PercentOrder, \
-    TargetQuantityOrder, TargetWeightOrder, ExpectedExecutionPrice
+from tradeengine.dto import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder, TargetQuantityOrder, \
+    TargetWeightOrder, Order
+from tradeengine.dto.portfolio import PortfolioValue
 
 LOG = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         # strong enough portfolio impact (>= x% of portfolio value) we can abort the execution and return None values.
 
         price = expected_price * (1 + self.slippage)
-        impact = (order.size * price) / pv.value() if pv is not None else 0
+        # impact = (order.size * price) / pv.value() if pv is not None else 0
         # has_impact = pv is not None and 0 < self.relative_order_min_impact <= impact  # FIXME doesnt work, we would need to view all trades of the same date
         has_impact = True
         fee = self.fee_calculator(order.size, price)
@@ -124,7 +125,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
 
         return (order.size, price, fee) if has_impact else (None, None, None)
 
-    def get_all_executed_orders(self, include_evicted) -> pd.DataFrame:
+    def get_all_executed_orders(self, include_evicted=False) -> pd.DataFrame:
         filer = (OrderBookHistory.strategy_id == self.strategy_id)\
             if include_evicted else ((OrderBookHistory.strategy_id == self.strategy_id) & (OrderBookHistory.status == 1))
 

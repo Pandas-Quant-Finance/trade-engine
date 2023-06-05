@@ -8,7 +8,7 @@ import pandas as pd
 import pykka
 
 from tradeengine.actors.memory import PandasQuoteProviderActor
-from tradeengine.dto.dataflow import Asset
+from tradeengine.dto import Asset
 from tradeengine.messages import NewOrderMessage, ReplayAllMarketDataMessage, PortfolioPerformanceMessage, \
     AllExecutedOrderHistory
 

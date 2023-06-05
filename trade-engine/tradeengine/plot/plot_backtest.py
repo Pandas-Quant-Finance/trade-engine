@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from tradeengine.backtest import Backtest
-from tradeengine.dto.dataflow import CASH
+from tradeengine.dto.asset import CASH
 from tradeengine.plot.colors import get_color_for
 
 

@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from testutils.data import AAPL, MSFT
 from testutils.database import get_sqlite_engine
 from tradeengine.actors.memory import MemPortfolioActor
-from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor, CASH
+from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor
+from tradeengine.dto.asset import CASH
 
 
 @pytest.mark.parametrize(
