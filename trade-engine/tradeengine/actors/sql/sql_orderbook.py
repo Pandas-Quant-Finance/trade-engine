@@ -22,7 +22,6 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             portfolio_actor: pykka.ActorRef,
             alchemy_engine: Engine,
             fee_calculator: Callable[[float, float], float] = lambda qty, price: 0,
-            relative_order_min_impact: float = 0,
             slippage: float = 0,
             strategy_id: str = ''
     ):
@@ -31,7 +30,6 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         self.strategy_id = strategy_id
 
         self.fee_calculator = fee_calculator
-        self.relative_order_min_impact = relative_order_min_impact
         self.slippage = slippage
 
         LOG.info("generate OrderBook database objects")

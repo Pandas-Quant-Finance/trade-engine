@@ -11,6 +11,8 @@ from tradeengine.actors.memory import MemPortfolioActor
 from tradeengine.actors.sql import SQLOrderbookActor
 from tradeengine.backtest import backtest_strategy, Backtest
 
+TEST_ROOT = Path(__file__).parents[1]
+
 
 class TestActorTradeEngine(TestCase):
 
@@ -33,7 +35,7 @@ class TestActorTradeEngine(TestCase):
             # shutdown_on_complete=False
         )
 
-        file = '../notebooks/strategy-long-aapl.hdf5'
+        file = TEST_ROOT.joinpath('../notebooks/strategy-long-aapl.hdf5')
         backtest.save(file)
 
         expected_backtest = Backtest.load(Path(__file__).parent.joinpath("strategy-long-aapl.hdf5"))
@@ -63,7 +65,7 @@ class TestActorTradeEngine(TestCase):
             # shutdown_on_complete=False
         )
 
-        file = '../notebooks/strategy-swing-aapl.hdf5'
+        file = TEST_ROOT.joinpath('../notebooks/strategy-swing-aapl.hdf5')
         backtest.save(file)
 
         expected_backtest = Backtest.load(Path(__file__).parent.joinpath("strategy-swing-aapl.hdf5"))
@@ -93,7 +95,7 @@ class TestActorTradeEngine(TestCase):
             # shutdown_on_complete=False
         )
 
-        file = '../notebooks/strategy-swing-all.hdf5'
+        file = TEST_ROOT.joinpath('../notebooks/strategy-swing-all.hdf5')
         backtest.save(file)
 
         expected_backtest = Backtest.load(Path(__file__).parent.joinpath("strategy-swing-all.hdf5"))
@@ -107,7 +109,7 @@ class TestActorTradeEngine(TestCase):
     def test_long_1oN(self):
         strategy_id: str = str(uuid.uuid4())
         portfolio_actor = MemPortfolioActor.start(funding=100_000)
-        orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id, relative_order_min_impact=0)
+        orderbook_actor = SQLOrderbookActor.start(portfolio_actor, get_sqlite_engine(False), strategy_id=strategy_id)
         frames = AAPL_MSFT_TLT_MD_FRAMES.copy()
 
         signal = one_over_n(frames)
@@ -119,7 +121,7 @@ class TestActorTradeEngine(TestCase):
             signal,
         )
 
-        file = '../notebooks/strategy-long-1oN.hdf5'
+        file = TEST_ROOT.joinpath('../notebooks/strategy-long-1oN.hdf5')
         backtest.save(file)
 
         expected_backtest = Backtest.load(Path(__file__).parent.joinpath("strategy-long-1oN.hdf5"))
