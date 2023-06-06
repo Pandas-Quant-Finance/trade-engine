@@ -11,7 +11,7 @@ from tradeengine.actors.sql import SQLOrderbookActor
 from tradeengine.backtest import Backtest, BacktestStrategy
 
 TEST_ROOT = Path(__file__).parents[1]
-STRICT = False
+STRICT = True
 
 
 class TestActorTradeEngine(TestCase):

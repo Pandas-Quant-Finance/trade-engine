@@ -45,7 +45,7 @@ class SQLOrderbookActor(AbstractOrderbookActor):
         finally:
             super().on_stop()
 
-    def place_order(self, order: Order):
+    def place_order(self, order: Order) -> Order:
         # simply store the order in the datastructure i.e. sqlite
         with Session(self.engine) as session:
             session.add(
@@ -61,6 +61,8 @@ class SQLOrderbookActor(AbstractOrderbookActor):
                 )
             )
             session.commit()
+
+        return order
 
     def get_full_orderbook(self):
         with Session(self.engine) as session:

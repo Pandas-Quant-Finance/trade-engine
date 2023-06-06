@@ -104,7 +104,7 @@ class AbstractOrderbookActor(pykka.ThreadingActor):
         return False
 
     @abstractmethod
-    def place_order(self, order: Order):
+    def place_order(self, order: Order) -> Order:
         # simply store the order in a datastructure
         raise NotImplemented
 

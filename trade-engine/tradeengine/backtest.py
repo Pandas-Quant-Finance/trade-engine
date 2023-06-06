@@ -86,7 +86,10 @@ class BacktestStrategy(object):
         }
 
         # ask orderbook about all orders we want to place
-        placed_orders = {a: s.apply(self._place_order).apply(lambda futures: [f.get() for f in futures]) for a, s in orders.items()}
+        placed_orders = {
+            a: s.apply(self._place_order).apply(lambda futures: [f.get() for f in futures if f.get() is not None])\
+                for a, s in orders.items()
+        }
 
         # generate market data for market data actor
         market_data = {Asset(h): df for h, df in market_data.items()}

@@ -74,7 +74,7 @@ class PlotBacktest(object):
 
     def get_plot_objects(self) -> Dict[str, list]:
         orders = self.backtest.orders[self.backtest.orders["status"] == 1]\
-            .pivot(index='execute_time', columns='symbol', values='execute_value')\
+            .pivot(index='execute_time', columns='asset', values='execute_value')\
             .sort_index()
         idx = self.backtest.market_data.index
 
@@ -86,7 +86,7 @@ class PlotBacktest(object):
 
         # cash position
         #traces["position_values"].append(go.Scatter(x=self.position_values.index, y=self.position_values[CASH], mode='lines', name="Cash", legendgroup="Cash", marker=dict(color='#555555')))
-        traces["position_values"].append(go.Bar(x=self.backtest.position_values.index, y=self.backtest.position_values[CASH], name="Cash", legendgroup="Cash", marker=dict(color='#555555')))
+        traces["position_values"].append(go.Bar(x=self.backtest.position_values.index, y=self.backtest.position_values[str(CASH)], name="Cash", legendgroup="Cash", marker=dict(color='#555555')))
 
         # Add traces to the first row
         for asset in self.backtest.assets:
@@ -114,6 +114,7 @@ class PlotBacktest(object):
             markers = defaultdict(lambda: {"x": [], "y": []})
             for i, sigs in signals.items():
                 for s in sigs:
+                    if s is None: continue
                     markers[s.marker]["x"].append(i)
                     markers[s.marker]["y"].append(md.loc[i].mean())
 
