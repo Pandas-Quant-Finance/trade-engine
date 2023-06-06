@@ -14,7 +14,7 @@ class Asset:
         return self.symbol < other.symbol
 
     def __str__(self):
-        return self.to_json()
+        return f"{self.symbol}"
 
     def __hash__(self):
         return int(hashlib.md5(str(self.symbol).encode("utf-8")).hexdigest(), 16)

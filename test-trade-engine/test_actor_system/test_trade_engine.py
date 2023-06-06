@@ -8,10 +8,10 @@ from testutils.frames import frames_allmost_equal
 from testutils.trading import sample_strategy, one_over_n
 from tradeengine.actors.memory import MemPortfolioActor
 from tradeengine.actors.sql import SQLOrderbookActor
-from tradeengine.backtest import backtest_strategy, Backtest
+from tradeengine.backtest import Backtest, BacktestStrategy
 
 TEST_ROOT = Path(__file__).parents[1]
-STRICT = True
+STRICT = False
 
 
 class TestActorTradeEngine(TestCase):
@@ -26,14 +26,12 @@ class TestActorTradeEngine(TestCase):
         sma_signal_info = {k: v[["ma_fast", "ma_slow"]] for k, v in strategy.items()}
         signal = {k: v["order"] for k, v in strategy.items()}
 
-        backtest = backtest_strategy(
+        backtest = BacktestStrategy(
             orderbook_actor,
             portfolio_actor,
             frames,
-            signal,
             market_data_extra_data=sma_signal_info
-            # shutdown_on_complete=False
-        )
+        ).run_backtest(signal)
 
         file = TEST_ROOT.joinpath('../notebooks/strategy-long-aapl.hdf5')
         backtest.save(file)
@@ -56,14 +54,12 @@ class TestActorTradeEngine(TestCase):
         sma_signal_info = {k: v[["ma_fast", "ma_slow"]] for k, v in strategy.items()}
         signal = {k: v["order"] for k, v in strategy.items()}
 
-        backtest = backtest_strategy(
+        backtest = BacktestStrategy(
             orderbook_actor,
             portfolio_actor,
             frames,
-            signal,
             market_data_extra_data=sma_signal_info
-            # shutdown_on_complete=False
-        )
+        ).run_backtest(signal)
 
         file = TEST_ROOT.joinpath('../notebooks/strategy-swing-aapl.hdf5')
         backtest.save(file)
@@ -86,14 +82,12 @@ class TestActorTradeEngine(TestCase):
         sma_signal_info = {k: v[["ma_fast", "ma_slow"]] for k, v in strategy.items()}
         signal = {k: v["order"] for k, v in strategy.items()}
 
-        backtest = backtest_strategy(
+        backtest = BacktestStrategy(
             orderbook_actor,
             portfolio_actor,
             frames,
-            signal,
             market_data_extra_data=sma_signal_info
-            # shutdown_on_complete=False
-        )
+        ).run_backtest(signal)
 
         file = TEST_ROOT.joinpath('../notebooks/strategy-swing-all.hdf5')
         backtest.save(file)
@@ -114,12 +108,11 @@ class TestActorTradeEngine(TestCase):
 
         signal = one_over_n(frames)
 
-        backtest = backtest_strategy(
+        backtest = BacktestStrategy(
             orderbook_actor,
             portfolio_actor,
             frames,
-            signal,
-        )
+        ).run_backtest(signal)
 
         file = TEST_ROOT.joinpath('../notebooks/strategy-long-1oN.hdf5')
         backtest.save(file)

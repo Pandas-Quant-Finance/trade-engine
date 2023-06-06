@@ -130,15 +130,16 @@ class SQLOrderbookActor(AbstractOrderbookActor):
             if include_evicted else ((OrderBookHistory.strategy_id == self.strategy_id) & (OrderBookHistory.status == 1))
 
         with Session(self.engine) as session:
-            return pd.read_sql(
-                session\
-                    .query(OrderBookHistory)\
-                        .filter(filer)\
-                        .order_by(OrderBookHistory.valid_from, OrderBookHistory.asset)\
-                    .statement,
-                session.bind,
+            return pd.DataFrame(
+                [
+                    obh.to_dict() for obh in
+                        session.scalars(
+                            select(OrderBookHistory)\
+                                .where(filer)\
+                                .order_by(OrderBookHistory.valid_from, OrderBookHistory.asset)
+                        )
+                ]
             )
-
 
 def _get_executable_orders_from_orderbook_sql(strategy_id, asset, as_of, low, high):
     # all orders where valid_from >= as_of and valid_until >= as_of and where the limit is matched

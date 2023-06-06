@@ -54,4 +54,5 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
                 self.portfolio_actor.ask(message)
                 self.orderbook_actor.ask(message, block=self.blocking)
 
-        return self.dataframe
+        df = self.dataframe.rename(columns=str, level=0)
+        return df

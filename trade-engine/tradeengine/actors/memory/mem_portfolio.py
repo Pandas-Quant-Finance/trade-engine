@@ -120,5 +120,5 @@ class TimeseriesPosition(Position):
 
     def to_series(self) -> pd.Series:
         d = self.to_dict()
-        d["asset"] = self.asset
+        d["asset"] = str(self.asset)
         return pd.Series(d)

@@ -155,7 +155,7 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         with Session(self.alchemy_engine) as session:
             return pd.DataFrame(
                 [
-                    h.to_dict() for h in
+                    ph.to_dict() for ph in
                         session.scalars(
                             select(PortfolioHistory)\
                                 .where((PortfolioHistory.strategy_id == self.strategy_id) & (PortfolioHistory.time <= as_of))\

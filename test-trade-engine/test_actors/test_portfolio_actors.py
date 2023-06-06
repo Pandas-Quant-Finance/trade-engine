@@ -84,8 +84,8 @@ class TestPortfolioActor:
 
         # check timeseries
         df = port.get_portfolio_timeseries().set_index(["asset", "time"])
-        assert df.loc[CASH, "value"].to_list() == [1, -121, -60]
-        assert df.loc[AAPL, "value"].to_list() == [122, 132, 112, 12.2 * 5]
+        assert df.loc[str(CASH), "value"].to_list() == [1, -121, -60]
+        assert df.loc[str(AAPL), "value"].to_list() == [122, 132, 112, 12.2 * 5]
 
         hist = port.get_performance_history()
         # print(hist)
