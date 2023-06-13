@@ -1,10 +1,11 @@
 import datetime
 import logging
+import click
 import sys
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
-from typing import Dict, List, Hashable, Tuple, Type, Any
+from typing import Dict, List, Hashable, Tuple, Any
 
 import pandas as pd
 import pykka
@@ -170,3 +171,39 @@ class BacktestStrategy(object):
 
     def _place_order(self, orders: List[Order]) -> List[Future]:
         return [self.orderbook_actor.ask(NewOrderMessage(order), block=False) for order in orders]
+
+
+@click.command()
+@click.option('-s', '--signals', type=str, help="glob string of signal csv files")
+@click.option('-q', '--quote-frames', type=str, help="glob string of quote csv files")
+@click.argument('out_file', nargs=1)
+def cli(signals: str, quote_frames: str, out_file: str):
+    from pathlib import Path
+
+    signals = {f.name: pd.read_csv(f, parse_dates=True, index_col="Date") for f in Path(".").glob(signals)}
+    quote_frames = {f.name: pd.read_csv(f, parse_dates=True, index_col="Date") for f in Path(".").glob(quote_frames)}
+    run(signals, quote_frames, out_file)
+
+
+def run(signals: Dict[Hashable, pd.Series], quote_frames: Dict[Hashable, pd.DataFrame], out_file: str):
+    import uuid
+    from sqlalchemy import create_engine, StaticPool
+    from tradeengine.actors.memory import MemPortfolioActor
+    from tradeengine.actors.sql import SQLOrderbookActor
+
+    strategy_id: str = str(uuid.uuid4())
+    portfolio_actor = MemPortfolioActor.start(funding=100)
+    orderbook_actor = SQLOrderbookActor.start(
+        portfolio_actor,
+        create_engine('sqlite://', echo=False, connect_args={'check_same_thread': False}, poolclass=StaticPool),
+        strategy_id=strategy_id
+    )
+
+    backtest = BacktestStrategy(orderbook_actor, portfolio_actor, quote_frames).run_backtest(signals)
+
+    if out_file is not None:
+        backtest.save(out_file)
+
+
+if __name__ == '__main__':
+    cli()

@@ -3,6 +3,7 @@ tables
 pandas
 yfinance
 plotly
+click
 dash
 dataclasses_json
 datashader
