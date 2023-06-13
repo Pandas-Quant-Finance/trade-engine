@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 
 import pandas as pd
+from dataclasses_json import dataclass_json
 
 from tradeengine.actors.portfolio_actor import AbstractPortfolioActor
-from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset, CASH, Position
+from tradeengine.dto.position import PositionValue
+from tradeengine.dto.portfolio import PortfolioValue
+from tradeengine.dto.asset import CASH
+from tradeengine.dto import Asset, Position
 
 LOG = logging.getLogger(__name__)
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)
@@ -21,20 +26,20 @@ class MemPortfolioActor(AbstractPortfolioActor):
             funding_date: datetime = FUNDING_DATE
     ):
         super().__init__(funding)
-        self.positions: Dict[Asset, Position] = {}
+        self.positions: Dict[Asset, TimeseriesPosition] = {}
         self.funding_date = funding_date
 
         self.portfolio_history: List[pd.Series] = []
 
         # in case we have an empty portfolio initialize the cash position
         if len(self.positions) <= 0:
-            self.positions[CASH] = Position(CASH, funding_date, funding, 1.0, 0)
+            self.positions[CASH] = TimeseriesPosition(CASH, funding_date, funding, 1.0, 0)
             self.update_position_value(CASH, funding_date, 1.0, 1.0)
 
     def add_new_position(self, asset, as_of, quantity, price, fee):
         assert as_of > self.funding_date, f"can't add trades before the portfolio was funded! {as_of} > {self.funding_date}"
-        assert as_of >= self.positions.get(asset, Position(None, as_of, 0, 0, 0)).time, \
-            f"Can't backdate positions! {self.positions.get(asset, Position(None, as_of, 0, 0, 0)).time} > {as_of}"
+        assert as_of >= self.positions.get(asset, TimeseriesPosition(None, as_of, 0, 0, 0)).time, \
+            f"Can't backdate positions! {self.positions.get(asset, TimeseriesPosition(None, as_of, 0, 0, 0)).time} > {as_of}"
 
         # every trade as a cost aspect as in cash
         cost = -quantity * price - fee
@@ -42,7 +47,7 @@ class MemPortfolioActor(AbstractPortfolioActor):
         # update all current positions
         self.positions[CASH] += (cost, 1.0)
         self.positions[asset] = self.positions.get(
-            asset, Position(asset, as_of, 0, 0, quantity * price, 0)
+            asset, TimeseriesPosition(asset, as_of, 0, 0, quantity * price, 0)
         ) + (quantity, price)
 
         # since we executed a trade for a given price we know exactly the price of the asset, and thus we
@@ -58,11 +63,12 @@ class MemPortfolioActor(AbstractPortfolioActor):
 
         assert as_of >= pos.time, f"Can't back evaluate positions! {pos.time} > {as_of}"
 
-        pos.value = pos.quantity * ask if pos.quantity < 0 else pos.quantity * bid
-        pos.time = as_of
+        self.positions[asset] = pos.with_time_value(
+            as_of,
+            pos.quantity * ask if pos.quantity < 0 else pos.quantity * bid
+        )
 
-        s = pd.Series(dict(asset=pos.asset, time=pos.time, quantity=pos.quantity, cost_basis=pos.cost_basis, value=pos.value))
-        self.portfolio_history.append(s)
+        self.portfolio_history.append(self.positions[asset].to_series())
 
     def get_portfolio_value(self, as_of: datetime | None = None) -> PortfolioValue:
         if as_of is None: as_of = datetime.max
@@ -90,3 +96,29 @@ class MemPortfolioActor(AbstractPortfolioActor):
             df.time[0] = df.time[1] - timedelta(days=1)
 
         return df
+
+
+@dataclass_json
+@dataclass(frozen=True, eq=True, init=False, repr=True)
+class TimeseriesPosition(Position):
+    time: datetime
+
+    def __init__(self, asset: Asset, time: datetime, quantity: float, cost_basis: float = 1, value: float = None, pnl: float = 0):
+        super().__init__(asset, quantity, cost_basis, value, pnl)
+        # mimic frozen dataclass constructor
+        object.__setattr__(self, "time", time)
+
+    def __add__(self, other: Tuple[float, float]):
+        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price(other)
+        return TimeseriesPosition(self.asset, self.time, new_qty, new_cost_basis, new_value, new_pnl)
+
+    def __sub__(self, other: Tuple[float, float]):
+        return self + (-other[0], other[1])
+
+    def with_time_value(self, time: datetime, value: float):
+        return TimeseriesPosition(self.asset, time, self.quantity, self.cost_basis, value, self.pnl)
+
+    def to_series(self) -> pd.Series:
+        d = self.to_dict()
+        d["asset"] = str(self.asset)
+        return pd.Series(d)

@@ -10,7 +10,10 @@ from sqlalchemy import Engine, text, select, func, update
 from sqlalchemy.orm import Session
 from tradeengine.actors.portfolio_actor import AbstractPortfolioActor
 from tradeengine.actors.sql.persitency import PortfolioBase, PortfolioHistory, PortfolioPosition
-from tradeengine.dto.dataflow import PositionValue, PortfolioValue, Asset, CASH
+from tradeengine.dto.position import PositionValue
+from tradeengine.dto.portfolio import PortfolioValue
+from tradeengine.dto.asset import CASH
+from tradeengine.dto import Asset
 
 LOG = logging.getLogger(__name__)
 FUNDING_DATE = datetime.utcnow().replace(year=1900, month=1, day=1)
@@ -152,7 +155,7 @@ class SQLPortfolioActor(AbstractPortfolioActor):
         with Session(self.alchemy_engine) as session:
             return pd.DataFrame(
                 [
-                    h.to_dict() for h in
+                    ph.to_dict() for ph in
                         session.scalars(
                             select(PortfolioHistory)\
                                 .where((PortfolioHistory.strategy_id == self.strategy_id) & (PortfolioHistory.time <= as_of))\

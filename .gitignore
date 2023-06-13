@@ -1,6 +1,8 @@
+__pycache__/
+*.py[cod]
+
 .venv
 .idea
 scratch*
 .*_cache/
-**/__pycache__/
 

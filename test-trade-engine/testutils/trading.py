@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from testutils.data import AAPL_MSFT_MD_FRAMES
-from tradeengine.dto.dataflow import Asset, TargetWeightOrder, PercentOrder, CloseOrder
+from tradeengine.dto import Asset, CloseOrder, PercentOrder, TargetWeightOrder
 
 
 def sample_strategy(frames: Dict[Asset, pd.DataFrame], stragegy: Literal['long', 'short', 'swing'] = 'swing', signal_only=True, slow=90, fast=20) -> Dict[Asset, pd.Series | pd.DataFrame]:

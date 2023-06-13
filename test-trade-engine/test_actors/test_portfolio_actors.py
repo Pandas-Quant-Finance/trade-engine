@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from testutils.data import AAPL, MSFT
 from testutils.database import get_sqlite_engine
 from tradeengine.actors.memory import MemPortfolioActor
-from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor, CASH
+from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor
+from tradeengine.dto.asset import CASH
 
 
 @pytest.mark.parametrize(
@@ -83,8 +84,8 @@ class TestPortfolioActor:
 
         # check timeseries
         df = port.get_portfolio_timeseries().set_index(["asset", "time"])
-        assert df.loc[CASH, "value"].to_list() == [1, -121, -60]
-        assert df.loc[AAPL, "value"].to_list() == [122, 132, 112, 12.2 * 5]
+        assert df.loc[str(CASH), "value"].to_list() == [1, -121, -60]
+        assert df.loc[str(AAPL), "value"].to_list() == [122, 132, 112, 12.2 * 5]
 
         hist = port.get_performance_history()
         # print(hist)

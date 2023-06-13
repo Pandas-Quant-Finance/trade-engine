@@ -7,7 +7,7 @@ import pandas as pd
 import pykka
 
 from tradeengine.actors.market_data_actor import AbstractQuoteProviderActor
-from tradeengine.dto.dataflow import Asset
+from tradeengine.dto import Asset
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData
 
 LOG = logging.getLogger(__name__)
@@ -54,4 +54,5 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
                 self.portfolio_actor.ask(message)
                 self.orderbook_actor.ask(message, block=self.blocking)
 
-        return self.dataframe
+        df = self.dataframe.rename(columns=str, level=0)
+        return df

@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Tuple
 
-from sqlalchemy import ForeignKey, String, DateTime, Integer, Enum
+from sqlalchemy import String, DateTime, Enum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, composite
 
-from tradeengine.dto.dataflow import Asset, OrderTypes, _Position_addition, QuantityOrder
+from tradeengine.dto import Asset, OrderTypes, QuantityOrder
+from tradeengine.dto.position import PositionAdditionMixin
 
 
 # objects for SQL Alchemy
@@ -62,6 +63,26 @@ class OrderBookHistory(OrderBookBase):
     execute_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     execute_value: Mapped[float] = mapped_column(nullable=True)
 
+    def to_dict(self):
+        return dict(
+            id=self.id,
+            strategy_id=self.strategy_id,
+            order_type=self.order_type,
+            asset=str(self.asset),
+            limit=self.limit,
+            stop_limit=self.stop_limit,
+            valid_from=self.valid_from,
+            valid_until=self.valid_until,
+            size=self.size,
+            qty=self.qty,
+            status=self.status,
+            execute_price=self.execute_price,
+            execute_time=self.execute_time,
+            execute_value=self.execute_value,
+        )
+
+    def __str__(self):
+        return str(self.to_dict())
 
 class PortfolioBase(DeclarativeBase):
 
@@ -72,7 +93,7 @@ class PortfolioBase(DeclarativeBase):
 
 
 
-class PortfolioPosition(PortfolioBase, _Position_addition):
+class PortfolioPosition(PortfolioBase, PositionAdditionMixin):
     __tablename__ = 'portfolio_position'
     strategy_id: Mapped[str] = mapped_column(primary_key=True)
     asset: Mapped[Asset] = composite(mapped_column(String(255), primary_key=True))
@@ -82,7 +103,7 @@ class PortfolioPosition(PortfolioBase, _Position_addition):
     value: Mapped[float] = mapped_column()
 
     def __add__(self, other: Tuple[float, float]):
-        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price((self.quantity, self.cost_basis, 0), other)
+        new_qty, new_cost_basis, new_value, new_pnl = self.add_quantity_and_price(other)
         self.quantity = new_qty
         self.cost_basis = new_cost_basis
         self.value = new_value
@@ -104,7 +125,7 @@ class PortfolioHistory(PortfolioBase):
     def to_dict(self):
         return dict(
             strategy_id=self.strategy_id,
-            asset=self.asset,
+            asset=str(self.asset),
             time=self.time,
             quantity=self.quantity,
             cost_basis=self.cost_basis,

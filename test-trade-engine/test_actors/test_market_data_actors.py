@@ -6,9 +6,7 @@ import pandas.testing
 
 from testutils.mocks import MockActor
 from tradeengine.actors.memory.market_data_actor import PandasQuoteProviderActor
-from tradeengine.dto.dataflow import Asset
-
-
+from tradeengine.dto import Asset
 
 
 class TestMarketDataActors(TestCase):

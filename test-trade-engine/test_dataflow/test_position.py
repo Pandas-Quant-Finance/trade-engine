@@ -2,7 +2,7 @@ from copy import deepcopy
 from unittest import TestCase
 
 from testutils.data import AAPL
-from tradeengine.dto.dataflow import Position
+from tradeengine.dto.position import Position
 
 
 class TestDataFlowPosition(TestCase):

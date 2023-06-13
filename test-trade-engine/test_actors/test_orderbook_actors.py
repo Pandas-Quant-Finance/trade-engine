@@ -10,8 +10,10 @@ from testutils.mocks import MockActor
 from tradeengine.actors.orderbook_actor import order_sorter
 from tradeengine.actors.sql.sql_orderbook import SQLOrderbookActor
 from tradeengine.actors.sql.sql_portfolio import SQLPortfolioActor
-from tradeengine.dto.dataflow import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder, PositionValue, \
-    PortfolioValue, ExpectedExecutionPrice
+from tradeengine.dto.position import PositionValue
+from tradeengine.dto.portfolio import PortfolioValue
+from tradeengine.dto.order import ExpectedExecutionPrice
+from tradeengine.dto import Asset, OrderTypes, QuantityOrder, CloseOrder, PercentOrder
 
 AAPL = Asset("AAPL")
 
