@@ -12,8 +12,8 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-long-aapl.hdf5'
 filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-aapl.hdf5'
-filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-all.hdf5'
-filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-long-1oN.hdf5'
+#filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-all.hdf5'
+#filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-long-1oN.hdf5'
 bt = Backtest.load(filename)
 plot_bt = PlotBacktest(bt)
 fig_timeseries = plot_bt.plot_performance()

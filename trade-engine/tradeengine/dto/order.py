@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 
 import numpy as np
+from dataclasses_json import dataclass_json
 
 from tradeengine.dto.asset import Asset
 from tradeengine.dto.portfolio import PortfolioValue
@@ -29,6 +30,7 @@ class OrderTypes(Enum):
     TARGET_WEIGHT = 4
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class Order:
     asset: Asset
@@ -47,11 +49,18 @@ class Order:
         # by default the order is only valid until the end of the trading day
         return self.valid_until or (self.valid_from + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
+    def todict(self):
+        d = self.to_dict()
+        d["class"] = self.__class__.__name__
+        d["marker"] = self.marker
+        return d
+
     @property
     def marker(self):
         return 'circle'
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class QuantityOrder(Order):
 
@@ -69,6 +78,7 @@ class QuantityOrder(Order):
         return 'triangle-up' if self.size > 0 else 'triangle-down'
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class CloseOrder(Order):
     size = None
@@ -83,6 +93,7 @@ class CloseOrder(Order):
         return 'circle'
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class PercentOrder(Order):
 
@@ -99,6 +110,7 @@ class PercentOrder(Order):
         return 'triangle-up-dot'
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class TargetQuantityOrder(Order):
 
@@ -117,6 +129,7 @@ class TargetQuantityOrder(Order):
         return 'x-thin'
 
 
+@dataclass_json
 @dataclass(frozen=True, eq=True)
 class TargetWeightOrder(Order):
 

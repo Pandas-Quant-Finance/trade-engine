@@ -115,8 +115,8 @@ class PlotBacktest(object):
             for i, sigs in signals.items():
                 for s in sigs:
                     if s is None: continue
-                    markers[s.marker]["x"].append(i)
-                    markers[s.marker]["y"].append(md.loc[i].mean())
+                    markers[s["marker"]]["x"].append(i)
+                    markers[s["marker"]]["y"].append(md.loc[i].mean())
 
             for marker, xy in markers.items():
                 trace_signal = go.Scatter(x=xy["x"], y=xy["y"], name=symbol, marker=dict(color=color, symbol=marker, size=10), legendgroup=symbol, showlegend=False, mode='markers')

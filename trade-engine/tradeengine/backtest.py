@@ -1,5 +1,6 @@
 import datetime
 import logging
+import sys
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
@@ -9,12 +10,14 @@ import pandas as pd
 import pykka
 from pykka._future import Future
 
+import tradeengine
 from tradeengine.actors.memory import PandasQuoteProviderActor
 from tradeengine.dto import Asset, Order
 from tradeengine.messages import NewOrderMessage, ReplayAllMarketDataMessage, PortfolioPerformanceMessage, \
     AllExecutedOrderHistory
 
 LOG = logging.getLogger(__name__)
+ORDER_MODULE = tradeengine.dto.order.__name__
 
 
 @dataclass(frozen=True, eq=True)
@@ -73,7 +76,7 @@ class BacktestStrategy(object):
 
     def run_backtest(
             self,
-            signals: Dict[Hashable, pd.Series],  # pass a series of [pd.Timestamp, Dict[Type[<Order], kwargs]]]
+            signals: Dict[Hashable, pd.Series],  # pass a series of [pd.Timestamp, Dict[str[Type[<Order]], kwargs]]]
             resample_rule: str = 'D',
             shutdown_on_complete: bool = True
     ) -> Backtest:
@@ -86,8 +89,9 @@ class BacktestStrategy(object):
         }
 
         # ask orderbook about all orders we want to place
+        #  NOTE in order to return this data structure we need to json serialize the Order/Asset objects
         placed_orders = {
-            a: s.apply(self._place_order).apply(lambda futures: [f.get() for f in futures if f.get() is not None])\
+            a: s.apply(self._place_order).apply(lambda futures: [f.get().todict() for f in futures if f.get() is not None])\
                 for a, s in orders.items()
         }
 
@@ -135,7 +139,7 @@ class BacktestStrategy(object):
         trading_days_4_asset = market_data_index.to_series().shift(-1).fillna(datetime.datetime.max)
         return partial(self._make_orders, market_data_index=trading_days_4_asset, asset=Asset(symbol))
 
-    def _make_orders(self, order_descriptions: Tuple[pd.Timestamp, Dict[Type[Order], Dict[str, Any]]], market_data_index: pd.Series, asset: Asset):
+    def _make_orders(self, order_descriptions: Tuple[pd.Timestamp, Dict[str, Dict[str, Any]]], market_data_index: pd.Series, asset: Asset):
         tst, order_description = order_descriptions
         if order_description is None: return []
 
@@ -148,12 +152,15 @@ class BacktestStrategy(object):
         valid_from = tst + self.market_data_interval
 
         def make_order(order_type__kwargs):
-            return order_type__kwargs[0](
+            order_type, order_kwargs = order_type__kwargs
+            if isinstance(order_type, str): order_type = getattr(sys.modules[ORDER_MODULE], order_type)
+
+            return order_type(
                 asset,
                 **{
                     "size": None,
                     "valid_until": next_trading_tst,
-                    **order_type__kwargs[1],
+                    **order_kwargs,
                     "valid_from": valid_from
                 }
             )
