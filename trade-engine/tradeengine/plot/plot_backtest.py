@@ -39,35 +39,27 @@ class PlotBacktest(object):
         fig_positions = make_subplots(
             rows=2, cols=1, vertical_spacing=0.03, subplot_titles=("Position Weights", "Position Values"), specs=specs)
 
-        x_value = tst or self.backtest.position_values.index[-1]
-
+        x_value = tst if tst is not None else self.backtest.position_values.index[-1]
+        print("x", x_value)
         fig_positions.add_trace(
             go.Pie(
                 labels=list(map(str, self.backtest.position_weights.loc[x_value].index)),
-                values=self.backtest.position_weights.loc[x_value].abs(),
+                values=self.backtest.position_weights.loc[x_value].abs().apply(lambda x: f"{x:.4f}"),
                 marker_colors=list(map(get_color_for, self.backtest.position_weights.loc[x_value].index)),
                 sort=False,
             ),
             row=1,
             col=1
         )
-        fig_positions.update_traces(
-            text=self.backtest.position_weights.loc[x_value].apply(lambda x: f"{x:.4f}"),
-            textinfo='text', row=1, col=1
-        )
 
         fig_positions.add_trace(
             go.Pie(
                 labels=list(map(str, self.backtest.position_values.loc[x_value].index)),
-                values=self.backtest.position_values.loc[x_value].abs(),
+                values=self.backtest.position_values.loc[x_value].abs().apply(lambda x: f"{x:.4f}"),
                 marker_colors=list(map(get_color_for, self.backtest.position_values.loc[x_value].index)),
                 sort=False,
             ),
             row=2, col=1
-        )
-        fig_positions.update_traces(
-            text=self.backtest.position_values.loc[x_value].apply(lambda x: f"{x:.4f}"),
-            textinfo='text', row=2, col=1
         )
 
         return fig_positions
@@ -95,7 +87,7 @@ class PlotBacktest(object):
 
             # plot market data
             md = self.backtest.market_data[asset]
-            scale_factor = md.iloc[0].mean()
+            scale_factor = md.loc[md.first_valid_index()].mean()
             md /= scale_factor
             cols = md.columns.tolist()
             ncols = md.shape[1]

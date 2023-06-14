@@ -27,7 +27,7 @@ def run(filename: str, port: int | None = None):
 
     app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
     app.layout = backtest_layout(app, plot_bt)
-    app.run_server(debug=True, port=port)
+    app.run_server(debug=True, port=8050 if port is None else port)
 
 
 if __name__ == '__main__':
