@@ -9,6 +9,7 @@ import pykka
 from tradeengine.actors.market_data_actor import AbstractQuoteProviderActor
 from tradeengine.dto import Asset
 from tradeengine.messages.messages import NewBidAskMarketData, NewBarMarketData
+from tqdm import tqdm
 
 LOG = logging.getLogger(__name__)
 
@@ -37,9 +38,7 @@ class PandasQuoteProviderActor(AbstractQuoteProviderActor):
 
     def replay_all_market_data(self) -> pd.DataFrame:
         # IMPORTANT always update the portfolio first!
-        #self.portfolio_actor.ask()  # ask to be sure portfolio has all data
-        #self.orderbook_actor.tell()
-        for tst, row in self.dataframe.iterrows():
+        for tst, row in tqdm(self.dataframe.iterrows(), total=len(self.dataframe)):
             tst = tst.to_pydatetime() if isinstance(tst, pd.Timestamp) else tst
 
             for asset in self.assets:

@@ -81,6 +81,7 @@ class PlotBacktest(object):
         traces["position_values"].append(go.Bar(x=self.backtest.position_values.index, y=self.backtest.position_values[str(CASH)], name="Cash", legendgroup="Cash", marker=dict(color='#555555')))
 
         # Add traces to the first row
+        visible = 'legendonly' if len(self.backtest.assets) > 3 else True
         for asset in self.backtest.assets:
             symbol = str(asset)
             color = get_color_for(asset)
@@ -92,13 +93,13 @@ class PlotBacktest(object):
             cols = md.columns.tolist()
             ncols = md.shape[1]
             ohlc = cols[:4] if ncols >= 4 else (cols[0] * 2 + cols[1] * 2 if ncols == 2 else cols[0] * 4)
-            trace_price = go.Ohlc(x=idx, open=md[ohlc[0]], high=md[ohlc[1]], low=md[ohlc[2]], close=md[ohlc[3]], name=symbol, legendgroup=symbol, increasing_line_color=color, decreasing_line_color=color)
+            trace_price = go.Ohlc(x=idx, open=md[ohlc[0]], high=md[ohlc[1]], low=md[ohlc[2]], close=md[ohlc[3]], name=symbol, legendgroup=symbol, increasing_line_color=color, decreasing_line_color=color, visible=visible)
             traces["market_data"].append(trace_price)
 
             if len(self.backtest.market_data_extra_data) > 0:
                 ext_data = self.backtest.market_data_extra_data[asset] / scale_factor
                 for ext_col in ext_data.columns:
-                    trace_price = go.Scatter(x=ext_data.index, y=ext_data[ext_col], name=f"{symbol}.{ext_col}", legendgroup=symbol, mode='lines')
+                    trace_price = go.Scatter(x=ext_data.index, y=ext_data[ext_col], name=f"{symbol}.{ext_col}", legendgroup=symbol, mode='lines', visible=visible)
                     traces["market_data"].append(trace_price)
 
             # plot raw signals
@@ -111,18 +112,18 @@ class PlotBacktest(object):
                     markers[s["marker"]]["y"].append(md.loc[i].mean())
 
             for marker, xy in markers.items():
-                trace_signal = go.Scatter(x=xy["x"], y=xy["y"], name=symbol, marker=dict(color=color, symbol=marker, size=10), legendgroup=symbol, showlegend=False, mode='markers')
+                trace_signal = go.Scatter(x=xy["x"], y=xy["y"], name=symbol, marker=dict(color=color, symbol=marker, size=10), legendgroup=symbol, showlegend=False, mode='markers', visible=visible)
                 traces["signal"].append(trace_signal)
 
             # plot executed orders
             if symbol in orders.columns:
-                trace_executed_order = go.Bar(x=orders.index, y=orders[symbol].values, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
+                trace_executed_order = go.Bar(x=orders.index, y=orders[symbol].values, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False, visible=visible)
                 traces["executed_orders"].append(trace_executed_order)
 
             # position values
             if symbol in self.backtest.position_values.columns:
                 pv = self.backtest.position_values[asset]
-                position_value = go.Bar(x=pv.index, y=pv, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False)
+                position_value = go.Bar(x=pv.index, y=pv, marker=dict(color=color), name=symbol, legendgroup=symbol, showlegend=False, visible=visible)
                 traces["position_values"].append(position_value)
 
         # return all traces:

@@ -18,9 +18,10 @@ def run(filename: str, port: int | None = None):
 
     if filename is None:
         # filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-long-aapl.hdf5'
-        filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-aapl.hdf5'
+        # filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-aapl.hdf5'
         # filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-swing-all.hdf5'
         # filename = '/home/kic/sources/mine/tradeengine/notebooks/strategy-long-1oN.hdf5'
+        filename = '/home/kic/sources/mine/trading-momentum-transformer/data/checkpoints/use30_train_test_BACKTEST.hd5'
 
     backtest = Backtest.load(filename)
     plot_bt = PlotBacktest(backtest)

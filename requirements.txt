@@ -11,3 +11,4 @@ dash_bootstrap_components
 quantstats[stats]
 sqlalchemy>=2.0
 ddt[dev]
+tqdm
